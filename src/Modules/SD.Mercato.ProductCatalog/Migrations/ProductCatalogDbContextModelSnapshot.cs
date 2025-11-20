@@ -71,6 +71,13 @@ namespace SD.Mercato.ProductCatalog.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasDefaultValue("USD");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(5000)

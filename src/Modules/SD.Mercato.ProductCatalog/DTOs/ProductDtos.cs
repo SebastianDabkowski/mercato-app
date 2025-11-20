@@ -27,6 +27,11 @@ public class CreateProductRequest
     [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
     public decimal Price { get; set; }
 
+    [Required(ErrorMessage = "Currency is required")]
+    [MaxLength(3, ErrorMessage = "Currency code must be 3 characters")]
+    [RegularExpression("^[A-Z]{3}$", ErrorMessage = "Currency must be a valid 3-letter code (e.g., USD, EUR, GBP)")]
+    public string Currency { get; set; } = "USD";
+
     [Required(ErrorMessage = "Stock quantity is required")]
     [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
     public int StockQuantity { get; set; }
@@ -68,6 +73,11 @@ public class UpdateProductRequest
     [Required(ErrorMessage = "Price is required")]
     [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
     public decimal Price { get; set; }
+
+    [Required(ErrorMessage = "Currency is required")]
+    [MaxLength(3, ErrorMessage = "Currency code must be 3 characters")]
+    [RegularExpression("^[A-Z]{3}$", ErrorMessage = "Currency must be a valid 3-letter code (e.g., USD, EUR, GBP)")]
+    public string Currency { get; set; } = "USD";
 
     [Required(ErrorMessage = "Stock quantity is required")]
     [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
@@ -114,6 +124,7 @@ public class ProductDto
     public Guid CategoryId { get; set; }
     public string? CategoryName { get; set; }
     public decimal Price { get; set; }
+    public string Currency { get; set; } = "USD";
     public int StockQuantity { get; set; }
     public decimal? Weight { get; set; }
     public decimal? Length { get; set; }
@@ -137,6 +148,7 @@ public class PublicProductDto
     public string Description { get; set; } = string.Empty;
     public string? CategoryName { get; set; }
     public decimal Price { get; set; }
+    public string Currency { get; set; } = "USD";
     public int StockQuantity { get; set; }
     public List<string> ImageUrls { get; set; } = new();
     public DateTime CreatedAt { get; set; }

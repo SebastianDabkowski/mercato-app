@@ -80,6 +80,11 @@ public class ProductCatalogDbContext : DbContext
                 .IsRequired()
                 .HasColumnType("decimal(18,2)");
 
+            entity.Property(p => p.Currency)
+                .IsRequired()
+                .HasMaxLength(3)
+                .HasDefaultValue("USD");
+
             entity.Property(p => p.StockQuantity)
                 .IsRequired();
 

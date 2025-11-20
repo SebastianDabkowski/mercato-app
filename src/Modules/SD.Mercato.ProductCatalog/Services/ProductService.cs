@@ -79,6 +79,7 @@ public class ProductService : IProductService
                 Description = request.Description,
                 CategoryId = request.CategoryId,
                 Price = request.Price,
+                Currency = request.Currency,
                 StockQuantity = request.StockQuantity,
                 Weight = request.Weight,
                 Length = request.Length,
@@ -181,6 +182,7 @@ public class ProductService : IProductService
             product.Description = request.Description;
             product.CategoryId = request.CategoryId;
             product.Price = request.Price;
+            product.Currency = request.Currency;
             product.StockQuantity = request.StockQuantity;
             product.Weight = request.Weight;
             product.Length = request.Length;
@@ -259,6 +261,32 @@ public class ProductService : IProductService
             Description = p.Description,
             CategoryName = p.Category?.Name,
             Price = p.Price,
+            Currency = p.Currency,
+            StockQuantity = p.StockQuantity,
+            ImageUrls = DeserializeImageUrls(p.ImageUrls),
+            CreatedAt = p.CreatedAt
+        }).ToList();
+    }
+
+    public async Task<List<PublicProductDto>> GetAllPublishedProductsAsync()
+    {
+        var products = await _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.Status == ProductStatus.Published && p.StockQuantity > 0)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        // TODO: Include store name - requires cross-module query or service call
+        return products.Select(p => new PublicProductDto
+        {
+            Id = p.Id,
+            StoreId = p.StoreId,
+            StoreName = "", // TODO: Fetch from Store service
+            Title = p.Title,
+            Description = p.Description,
+            CategoryName = p.Category?.Name,
+            Price = p.Price,
+            Currency = p.Currency,
             StockQuantity = p.StockQuantity,
             ImageUrls = DeserializeImageUrls(p.ImageUrls),
             CreatedAt = p.CreatedAt
@@ -330,6 +358,7 @@ public class ProductService : IProductService
             CategoryId = product.CategoryId,
             CategoryName = product.Category?.Name,
             Price = product.Price,
+            Currency = product.Currency,
             StockQuantity = product.StockQuantity,
             Weight = product.Weight,
             Length = product.Length,
