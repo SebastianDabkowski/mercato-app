@@ -116,18 +116,31 @@ public class StoresController : ControllerBase
     }
 
     /// <summary>
-    /// Get a store by ID.
+    /// Get a store by ID (owner only).
     /// </summary>
     [HttpGet("{storeId:guid}")]
     [ProducesResponseType(typeof(StoreDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<StoreDto>> GetStoreById(Guid storeId)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
         var store = await _storeService.GetStoreByIdAsync(storeId);
 
         if (store == null)
         {
             return NotFound(new { message = "Store not found" });
+        }
+
+        // Only allow the store owner to view sensitive store details
+        if (store.OwnerUserId != userId)
+        {
+            return Forbid();
         }
 
         return Ok(store);

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SD.Mercato.ProductCatalog.Validation;
 
 namespace SD.Mercato.ProductCatalog.DTOs;
 
@@ -42,6 +43,7 @@ public class CreateProductRequest
     [Range(0, double.MaxValue, ErrorMessage = "Height cannot be negative")]
     public decimal? Height { get; set; }
 
+    [UrlList(ErrorMessage = "One or more image URLs are invalid")]
     public List<string>? ImageUrls { get; set; }
 
     public string Status { get; set; } = "Draft";
@@ -83,6 +85,7 @@ public class UpdateProductRequest
     [Range(0, double.MaxValue, ErrorMessage = "Height cannot be negative")]
     public decimal? Height { get; set; }
 
+    [UrlList(ErrorMessage = "One or more image URLs are invalid")]
     public List<string>? ImageUrls { get; set; }
 
     public string Status { get; set; } = "Draft";

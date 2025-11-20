@@ -119,6 +119,18 @@ public class StoreService : IStoreService
         }
         catch (DbUpdateException ex)
         {
+            // Check if it's a unique constraint violation for store name
+            if (ex.InnerException?.Message.Contains("IX_Stores_StoreName") == true ||
+                ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _logger.LogWarning(ex, "Duplicate store name attempt for user {UserId}", userId);
+                return new StoreResponse
+                {
+                    Success = false,
+                    Message = "Store name is already taken. Please choose a different name."
+                };
+            }
+
             _logger.LogError(ex, "Database error creating store for user {UserId}", userId);
             return new StoreResponse
             {

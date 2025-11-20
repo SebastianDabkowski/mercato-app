@@ -238,13 +238,7 @@ public class ProductService : IProductService
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        var productDtos = new List<ProductDto>();
-        foreach (var product in products)
-        {
-            productDtos.Add(await MapToDtoAsync(product));
-        }
-
-        return productDtos;
+        return products.Select(MapToDto).ToList();
     }
 
     public async Task<List<PublicProductDto>> GetPublishedProductsByStoreIdAsync(Guid storeId)
@@ -305,7 +299,7 @@ public class ProductService : IProductService
     {
         var query = _context.Products.Where(p => p.StoreId == storeId && p.SKU == sku);
         
-        if (excludeProductId.HasValue)
+        if (excludeProductId != null)
         {
             query = query.Where(p => p.Id != excludeProductId.Value);
         }
@@ -321,6 +315,11 @@ public class ProductService : IProductService
             await _context.Entry(product).Reference(p => p.Category).LoadAsync();
         }
 
+        return MapToDto(product);
+    }
+
+    private ProductDto MapToDto(Product product)
+    {
         return new ProductDto
         {
             Id = product.Id,
@@ -343,14 +342,20 @@ public class ProductService : IProductService
         };
     }
 
-    private static List<string> DeserializeImageUrls(string imageUrls)
+    private List<string> DeserializeImageUrls(string imageUrls)
     {
         try
         {
             return JsonSerializer.Deserialize<List<string>>(imageUrls) ?? new List<string>();
         }
-        catch
+        catch (JsonException ex)
         {
+            _logger.LogWarning(ex, "Failed to deserialize image URLs. Returning empty list. Invalid JSON: {ImageUrls}", imageUrls);
+            return new List<string>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error deserializing image URLs. Returning empty list.");
             return new List<string>();
         }
     }
@@ -372,22 +377,38 @@ public class CategoryService : ICategoryService
 
     public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryRequest request)
     {
-        var category = new Category
+        try
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            ParentCategoryId = request.ParentCategoryId,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
+            var category = new Category
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                Description = request.Description,
+                ParentCategoryId = request.ParentCategoryId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        _context.Categories.Add(category);
-        await _context.SaveChangesAsync();
+            _context.Categories.Add(category);
+            await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Category created: {CategoryId}", category.Id);
+            _logger.LogInformation("Category created: {CategoryId}", category.Id);
 
-        return MapToDto(category);
+            return MapToDto(category);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Check if it's a unique constraint violation for category name
+            if (ex.InnerException?.Message.Contains("IX_Categories_Name") == true ||
+                ex.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _logger.LogWarning(ex, "Duplicate category name attempt: {CategoryName}", request.Name);
+                throw new InvalidOperationException($"Category '{request.Name}' already exists. Please use a different name.");
+            }
+
+            _logger.LogError(ex, "Database error creating category: {CategoryName}", request.Name);
+            throw;
+        }
     }
 
     public async Task<List<CategoryDto>> GetActiveCategoriesAsync()
