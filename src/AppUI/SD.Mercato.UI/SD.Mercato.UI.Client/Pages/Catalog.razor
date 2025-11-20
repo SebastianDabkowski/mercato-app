@@ -3,6 +3,7 @@
 @inject IProductService ProductService
 @inject ICategoryService CategoryService
 @inject IStoreService StoreService
+@inject ICartService CartService
 @inject NavigationManager Navigation
 
 <PageTitle>Product Catalog</PageTitle>
@@ -167,8 +168,11 @@
                                     </span>
                                     <small class="text-muted">(0)</small>
                                 </div>
-                                <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewProduct(product.Id)">
+                                <button class="btn btn-primary btn-sm w-100 mb-2" @onclick="() => ViewProduct(product.Id)">
                                     <i class="bi bi-eye"></i> View Details
+                                </button>
+                                <button class="btn btn-success btn-sm w-100" @onclick="() => AddToCart(product.Id)" disabled="@(product.StockQuantity < 1)">
+                                    <i class="bi bi-cart-plus"></i> Add to Cart
                                 </button>
                             </div>
                         </div>
@@ -329,5 +333,17 @@
     private void ViewProduct(Guid productId)
     {
         Navigation.NavigateTo($"/catalog/{productId}");
+    }
+
+    private async Task AddToCart(Guid productId)
+    {
+        var result = await CartService.AddItemAsync(new AddToCartRequest
+        {
+            ProductId = productId,
+            Quantity = 1
+        });
+
+        // TODO: Show success/error message
+        // For now, we'll just rely on the cart icon updating
     }
 }

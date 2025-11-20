@@ -1,0 +1,256 @@
+@page "/cart"
+@using SD.Mercato.UI.Client.Services
+@inject ICartService CartService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Shopping Cart - Mercato</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Shopping Cart</h1>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (cart == null || !cart.Items.Any())
+    {
+        <div class="alert alert-info">
+            <h4>Your cart is empty</h4>
+            <p>Browse our <a href="/catalog">product catalog</a> to add items to your cart.</p>
+        </div>
+    }
+    else
+    {
+        @if (cart.HasPriceChanges)
+        {
+            <div class="alert alert-warning">
+                <strong>Price Changes Detected!</strong> Some items in your cart have changed price since you added them.
+            </div>
+        }
+
+        @if (cart.HasUnavailableItems)
+        {
+            <div class="alert alert-danger">
+                <strong>Unavailable Items!</strong> Some items in your cart are no longer available or out of stock.
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-lg-8">
+                @* Group items by store *@
+                @foreach (var storeGroup in cart.ItemsByStore)
+                {
+                    var storeName = cart.Items.FirstOrDefault(i => i.StoreId == storeGroup.Key)?.StoreName ?? "Unknown Store";
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-shop"></i> @storeName
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var item in storeGroup.Value)
+                            {
+                                <div class="row mb-3 pb-3 @(item != storeGroup.Value.Last() ? "border-bottom" : "")">
+                                    <div class="col-md-2">
+                                        @if (!string.IsNullOrEmpty(item.ProductImageUrl))
+                                        {
+                                            <img src="@item.ProductImageUrl" alt="@item.ProductTitle" class="img-fluid rounded" />
+                                        }
+                                        else
+                                        {
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 100px;">
+                                                <i class="bi bi-image" style="font-size: 2rem;"></i>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="col-md-5">
+                                        <h6>@item.ProductTitle</h6>
+                                        
+                                        @if (!item.IsAvailable)
+                                        {
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        }
+                                        else if (item.AvailableStock < item.Quantity)
+                                        {
+                                            <span class="badge bg-warning text-dark">Only @item.AvailableStock available</span>
+                                        }
+                                        
+                                        @if (item.IsPriceChanged)
+                                        {
+                                            <div class="mt-1">
+                                                <small class="text-muted text-decoration-line-through">$@item.PriceAtAdd.ToString("F2")</small>
+                                                <strong class="text-danger ms-2">$@item.CurrentPrice.ToString("F2")</strong>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="mt-1">
+                                                <strong>$@item.CurrentPrice.ToString("F2")</strong>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="input-group">
+                                            <button class="btn btn-outline-secondary" type="button" 
+                                                    @onclick="() => UpdateQuantity(item.Id, item.Quantity - 1)"
+                                                    disabled="@(item.Quantity <= 1 || isUpdating)">
+                                                <i class="bi bi-dash"></i>
+                                            </button>
+                                            <input type="number" class="form-control text-center" value="@item.Quantity" 
+                                                   min="1" max="@item.AvailableStock" readonly />
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    @onclick="() => UpdateQuantity(item.Id, item.Quantity + 1)"
+                                                    disabled="@(item.Quantity >= item.AvailableStock || isUpdating)">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <div>
+                                            <strong>$@item.Subtotal.ToString("F2")</strong>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger mt-2" 
+                                                @onclick="() => RemoveItem(item.Id)"
+                                                disabled="@isUpdating">
+                                            <i class="bi bi-trash"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Items (@cart.TotalItems):</span>
+                            <span>$@cart.TotalAmount.ToString("F2")</span>
+                        </div>
+                        <hr />
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total:</strong>
+                            <strong>$@cart.TotalAmount.ToString("F2")</strong>
+                        </div>
+                        
+                        @if (cart.HasUnavailableItems)
+                        {
+                            <button class="btn btn-primary w-100" disabled>
+                                Checkout (Unavailable Items)
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary w-100" @onclick="ProceedToCheckout">
+                                Proceed to Checkout
+                            </button>
+                        }
+                        
+                        <button class="btn btn-outline-secondary w-100 mt-2" @onclick='() => Navigation.NavigateTo("/catalog")'>
+                            Continue Shopping
+                        </button>
+                        
+                        <button class="btn btn-outline-danger w-100 mt-2" @onclick="ClearCart" disabled="@isUpdating">
+                            Clear Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CartDto? cart;
+    private bool isLoading = true;
+    private bool isUpdating = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCart();
+        CartService.OnCartChanged += OnCartChanged;
+    }
+
+    private async Task LoadCart()
+    {
+        isLoading = true;
+        cart = await CartService.GetCartAsync();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task UpdateQuantity(Guid itemId, int newQuantity)
+    {
+        if (newQuantity < 1) return;
+
+        isUpdating = true;
+        var result = await CartService.UpdateItemQuantityAsync(itemId, new UpdateCartItemRequest { Quantity = newQuantity });
+        
+        if (result.Success && result.Cart != null)
+        {
+            cart = result.Cart;
+        }
+        
+        isUpdating = false;
+        StateHasChanged();
+    }
+
+    private async Task RemoveItem(Guid itemId)
+    {
+        isUpdating = true;
+        var removed = await CartService.RemoveItemAsync(itemId);
+        
+        if (removed)
+        {
+            await LoadCart();
+        }
+        
+        isUpdating = false;
+    }
+
+    private async Task ClearCart()
+    {
+        if (!await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to clear your cart?"))
+        {
+            return;
+        }
+
+        isUpdating = true;
+        var cleared = await CartService.ClearCartAsync();
+        
+        if (cleared)
+        {
+            cart = null;
+        }
+        
+        isUpdating = false;
+        StateHasChanged();
+    }
+
+    private void ProceedToCheckout()
+    {
+        // TODO: Implement checkout flow
+        Navigation.NavigateTo("/checkout");
+    }
+
+    private void OnCartChanged()
+    {
+        InvokeAsync(LoadCart);
+    }
+
+    public void Dispose()
+    {
+        CartService.OnCartChanged -= OnCartChanged;
+    }
+}
