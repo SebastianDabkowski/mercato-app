@@ -104,7 +104,7 @@
 </div>
 
 @code {
-    private RegisterRequest registerRequest = new() { Role = "Buyer" };
+    private readonly RegisterRequest registerRequest = new() { Role = "Buyer" };
     private string? errorMessage;
     private string? successMessage;
     private bool isLoading = false;
