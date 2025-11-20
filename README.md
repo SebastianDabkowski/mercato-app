@@ -80,6 +80,21 @@ All domain logic is split into feature modules under `src/Modules`:
 
 ---
 
+## Documentation
+
+Comprehensive documentation is available in the `.github/copilot/` directory:
+
+- **[Quick Start Guide](.github/copilot/quickstart.md)** - 🚀 **Start here!** Documentation roadmap and essential info
+- **[Business Domain Documentation](.github/copilot/business-domain.md)** - Core business flows, entities, rules, and MVP scope
+- **[Domain Model Reference](.github/copilot/domain-model.md)** - Entity relationships, state machines, and data flows
+- **[Implementation Status](.github/copilot/implementation-status.md)** - Feature tracking and progress monitoring
+- **[Product Requirements (PRD)](.github/copilot/prd.md)** - Product requirements and feature specifications
+- **[Architecture Overview](.github/copilot/architecture.md)** - Technical architecture and design decisions
+
+**New to the project?** Start with the [Quick Start Guide](.github/copilot/quickstart.md) for a guided tour through the documentation.
+
+---
+
 ## Getting started
 
 1. Clone the repository.
