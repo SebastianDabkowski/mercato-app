@@ -1,4 +1,6 @@
 using SD.Mercato.Users;
+using SD.Mercato.SellerPanel;
+using SD.Mercato.ProductCatalog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +12,12 @@ builder.Services.AddOpenApi();
 
 // Add Users module (authentication and authorization)
 builder.Services.AddUsersModule(builder.Configuration);
+
+// Add SellerPanel module (store management)
+builder.Services.AddSellerPanelModule(builder.Configuration);
+
+// Add ProductCatalog module (product and category management)
+builder.Services.AddProductCatalogModule(builder.Configuration);
 
 // Add CORS
 // TODO: Restrict CORS to specific origins (frontend URL) before production deployment
@@ -33,16 +41,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         await UsersModuleExtensions.SeedRolesAsync(services);
+        await ProductCatalogModuleExtensions.SeedCategoriesAsync(services);
     }
     catch (Exception ex)
     {
         if (logger != null)
         {
-            logger.LogError(ex, "An error occurred while seeding roles.");
+            logger.LogError(ex, "An error occurred while seeding data.");
         }
         else
         {
-            Console.Error.WriteLine($"An error occurred while seeding roles: {ex}");
+            Console.Error.WriteLine($"An error occurred while seeding data: {ex}");
         }
     }
 }

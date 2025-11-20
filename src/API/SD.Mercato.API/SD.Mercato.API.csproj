@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\SD.Mercato.Users\SD.Mercato.Users.csproj" />
+    <ProjectReference Include="..\..\Modules\SD.Mercato.SellerPanel\SD.Mercato.SellerPanel.csproj" />
+    <ProjectReference Include="..\..\Modules\SD.Mercato.ProductCatalog\SD.Mercato.ProductCatalog.csproj" />
   </ItemGroup>
 
 </Project>
