@@ -41,16 +41,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         await UsersModuleExtensions.SeedRolesAsync(services);
+        await ProductCatalogModuleExtensions.SeedCategoriesAsync(services);
     }
     catch (Exception ex)
     {
         if (logger != null)
         {
-            logger.LogError(ex, "An error occurred while seeding roles.");
+            logger.LogError(ex, "An error occurred while seeding data.");
         }
         else
         {
-            Console.Error.WriteLine($"An error occurred while seeding roles: {ex}");
+            Console.Error.WriteLine($"An error occurred while seeding data: {ex}");
         }
     }
 }
