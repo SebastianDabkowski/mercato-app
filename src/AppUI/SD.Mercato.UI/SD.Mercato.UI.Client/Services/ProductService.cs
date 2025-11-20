@@ -253,7 +253,11 @@ public class ProductService : IProductService
             }
             return new PaginatedProductsResponse();
         }
-        catch
+        catch (HttpRequestException)
+        {
+            return new PaginatedProductsResponse();
+        }
+        catch (TaskCanceledException)
         {
             return new PaginatedProductsResponse();
         }
