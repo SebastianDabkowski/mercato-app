@@ -94,7 +94,8 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"An error occurred: {ex.Message}";
+            Console.Error.WriteLine(ex);
+            errorMessage = "An unexpected error occurred. Please try again later.";
         }
         finally
         {
