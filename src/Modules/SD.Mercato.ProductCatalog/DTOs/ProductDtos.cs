@@ -181,3 +181,72 @@ public class CategoryDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+/// <summary>
+/// Request model for searching and filtering products.
+/// </summary>
+public class ProductSearchRequest
+{
+    /// <summary>
+    /// Search query for product title and description.
+    /// </summary>
+    public string? SearchQuery { get; set; }
+
+    /// <summary>
+    /// Filter by category ID.
+    /// </summary>
+    public Guid? CategoryId { get; set; }
+
+    /// <summary>
+    /// Minimum price filter.
+    /// </summary>
+    [Range(0, double.MaxValue, ErrorMessage = "Minimum price cannot be negative")]
+    public decimal? MinPrice { get; set; }
+
+    /// <summary>
+    /// Maximum price filter.
+    /// </summary>
+    [Range(0, double.MaxValue, ErrorMessage = "Maximum price cannot be negative")]
+    public decimal? MaxPrice { get; set; }
+
+    /// <summary>
+    /// Filter by store ID (seller).
+    /// </summary>
+    public Guid? StoreId { get; set; }
+
+    /// <summary>
+    /// Page number (1-based).
+    /// </summary>
+    [Range(1, int.MaxValue, ErrorMessage = "Page number must be greater than 0")]
+    public int PageNumber { get; set; } = 1;
+
+    /// <summary>
+    /// Number of items per page.
+    /// </summary>
+    [Range(1, 100, ErrorMessage = "Page size must be between 1 and 100")]
+    public int PageSize { get; set; } = 12;
+
+    /// <summary>
+    /// Sort by field (e.g., "price", "title", "created").
+    /// </summary>
+    public string? SortBy { get; set; }
+
+    /// <summary>
+    /// Sort direction ("asc" or "desc").
+    /// </summary>
+    public string? SortDirection { get; set; } = "desc";
+}
+
+/// <summary>
+/// Paginated response for product search results.
+/// </summary>
+public class PaginatedProductsResponse
+{
+    public List<PublicProductDto> Products { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+    public bool HasPreviousPage => PageNumber > 1;
+    public bool HasNextPage => PageNumber < TotalPages;
+}

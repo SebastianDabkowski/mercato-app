@@ -33,6 +33,11 @@ public interface IStoreService
     Task<PublicStoreProfileDto?> GetPublicStoreProfileByNameAsync(string storeName);
 
     /// <summary>
+    /// Get all active stores (for filters).
+    /// </summary>
+    Task<List<StoreListItemDto>> GetActiveStoresAsync();
+
+    /// <summary>
     /// Check if a store name is available.
     /// </summary>
     Task<bool> IsStoreNameAvailableAsync(string storeName);

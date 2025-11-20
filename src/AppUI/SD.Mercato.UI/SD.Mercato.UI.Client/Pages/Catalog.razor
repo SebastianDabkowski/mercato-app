@@ -1,6 +1,8 @@
 @page "/catalog"
 @using SD.Mercato.UI.Client.Services
 @inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject IStoreService StoreService
 @inject NavigationManager Navigation
 
 <PageTitle>Product Catalog</PageTitle>
@@ -8,6 +10,88 @@
 <div class="container mt-4">
     <h3>Product Catalog</h3>
     <p class="text-muted">Browse products from all sellers</p>
+
+    <!-- Search and Filters Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <!-- Search Bar -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" placeholder="Search products by title or description..." 
+                                       @bind="searchQuery" @bind:event="oninput" />
+                                <button class="btn btn-primary" @onclick="ApplyFilters">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                                @if (HasActiveFilters())
+                                {
+                                    <button class="btn btn-outline-secondary" @onclick="ClearFilters">
+                                        <i class="bi bi-x-circle"></i> Clear
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" @bind="sortBy" @bind:after="ApplyFilters">
+                                <option value="">Sort by: Default</option>
+                                <option value="price_asc">Price: Low to High</option>
+                                <option value="price_desc">Price: High to Low</option>
+                                <option value="title_asc">Title: A-Z</option>
+                                <option value="title_desc">Title: Z-A</option>
+                                <option value="created_desc">Newest First</option>
+                                <option value="created_asc">Oldest First</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filters Row -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label small">Category</label>
+                            <select class="form-select" @bind="selectedCategoryId" @bind:after="ApplyFilters">
+                                <option value="">All Categories</option>
+                                @foreach (var category in categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Min Price</label>
+                            <input type="number" class="form-control" placeholder="Min" @bind="minPrice" step="0.01" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Max Price</label>
+                            <input type="number" class="form-control" placeholder="Max" @bind="maxPrice" step="0.01" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">&nbsp;</label>
+                            <button class="btn btn-primary w-100" @onclick="ApplyFilters">
+                                <i class="bi bi-funnel"></i> Filter
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Seller Filter -->
+                    <div class="row mt-2">
+                        <div class="col-md-4">
+                            <label class="form-label small">Seller</label>
+                            <select class="form-select" @bind="selectedStoreId" @bind:after="ApplyFilters">
+                                <option value="">All Sellers</option>
+                                @foreach (var store in stores)
+                                {
+                                    <option value="@store.Id">@store.DisplayName</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if (loading)
     {
@@ -17,16 +101,26 @@
             </div>
         </div>
     }
-    else if (products.Count == 0)
+    else if (paginatedResponse.Products.Count == 0)
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> No products available at the moment. Check back soon!
+            <i class="bi bi-info-circle"></i> No products found matching your criteria. Try adjusting your filters.
         </div>
     }
     else
     {
+        <!-- Results Summary -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0">
+                Showing @((paginatedResponse.PageNumber - 1) * paginatedResponse.PageSize + 1) - 
+                @Math.Min(paginatedResponse.PageNumber * paginatedResponse.PageSize, paginatedResponse.TotalCount) 
+                of @paginatedResponse.TotalCount products
+            </p>
+        </div>
+
+        <!-- Product Grid -->
         <div class="row">
-            @foreach (var product in products)
+            @foreach (var product in paginatedResponse.Products)
             {
                 <div class="col-md-4 col-lg-3 mb-4">
                     <div class="card h-100">
@@ -42,6 +136,12 @@
                         }
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title">@product.Title</h5>
+                            @if (!string.IsNullOrEmpty(product.StoreName))
+                            {
+                                <p class="text-muted small mb-1">
+                                    <i class="bi bi-shop"></i> @product.StoreName
+                                </p>
+                            }
                             @if (!string.IsNullOrEmpty(product.CategoryName))
                             {
                                 <p class="text-muted small mb-2">
@@ -53,8 +153,19 @@
                             </p>
                             <div class="mt-auto">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="h5 mb-0 text-primary">@product.Price.ToString("C") @product.Currency</span>
+                                    <span class="h5 mb-0 text-primary">$@product.Price.ToString("0.00")</span>
                                     <small class="text-muted">Stock: @product.StockQuantity</small>
+                                </div>
+                                <!-- Rating Placeholder -->
+                                <div class="mb-2">
+                                    <span class="text-warning">
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star"></i>
+                                    </span>
+                                    <small class="text-muted">(0)</small>
                                 </div>
                                 <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewProduct(product.Id)">
                                     <i class="bi bi-eye"></i> View Details
@@ -65,23 +176,154 @@
                 </div>
             }
         </div>
+
+        <!-- Pagination -->
+        @if (paginatedResponse.TotalPages > 1)
+        {
+            <nav aria-label="Product pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(paginatedResponse.HasPreviousPage ? "" : "disabled")">
+                        <button class="page-link" @onclick="() => GoToPage(1)" disabled="@(!paginatedResponse.HasPreviousPage)">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(paginatedResponse.HasPreviousPage ? "" : "disabled")">
+                        <button class="page-link" @onclick="() => GoToPage(paginatedResponse.PageNumber - 1)" disabled="@(!paginatedResponse.HasPreviousPage)">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                    </li>
+
+                    @for (int i = GetStartPage(); i <= GetEndPage(); i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(paginatedResponse.PageNumber == pageNum ? "active" : "")">
+                            <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                        </li>
+                    }
+
+                    <li class="page-item @(paginatedResponse.HasNextPage ? "" : "disabled")">
+                        <button class="page-link" @onclick="() => GoToPage(paginatedResponse.PageNumber + 1)" disabled="@(!paginatedResponse.HasNextPage)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(paginatedResponse.HasNextPage ? "" : "disabled")">
+                        <button class="page-link" @onclick="() => GoToPage(paginatedResponse.TotalPages)" disabled="@(!paginatedResponse.HasNextPage)">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        }
     }
 </div>
 
 @code {
-    private List<PublicProductDto> products = new();
+    private PaginatedProductsResponse paginatedResponse = new();
+    private List<CategoryDto> categories = new();
+    private List<StoreListItemDto> stores = new();
     private bool loading = true;
+
+    // Filter state
+    private string searchQuery = string.Empty;
+    private string selectedCategoryId = string.Empty;
+    private decimal? minPrice;
+    private decimal? maxPrice;
+    private string selectedStoreId = string.Empty;
+    private string sortBy = string.Empty;
+    private int currentPage = 1;
+    private readonly int pageSize = 12;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCatalog();
+        await LoadFiltersData();
+        await LoadProducts();
     }
 
-    private async Task LoadCatalog()
+    private async Task LoadFiltersData()
+    {
+        categories = await CategoryService.GetActiveCategoriesAsync();
+        stores = await StoreService.GetActiveStoresAsync();
+    }
+
+    private async Task LoadProducts()
     {
         loading = true;
-        products = await ProductService.GetCatalogAsync();
+
+        var (sortField, sortDirection) = ParseSortBy(sortBy);
+
+        var request = new ProductSearchRequest
+        {
+            SearchQuery = string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
+            CategoryId = string.IsNullOrWhiteSpace(selectedCategoryId) || !Guid.TryParse(selectedCategoryId, out var catId) ? null : catId,
+            MinPrice = minPrice,
+            MaxPrice = maxPrice,
+            StoreId = string.IsNullOrWhiteSpace(selectedStoreId) || !Guid.TryParse(selectedStoreId, out var stId) ? null : stId,
+            PageNumber = currentPage,
+            PageSize = pageSize,
+            SortBy = sortField,
+            SortDirection = sortDirection
+        };
+
+        paginatedResponse = await ProductService.SearchProductsAsync(request);
         loading = false;
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1; // Reset to first page when filters change
+        await LoadProducts();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchQuery = string.Empty;
+        selectedCategoryId = string.Empty;
+        minPrice = null;
+        maxPrice = null;
+        selectedStoreId = string.Empty;
+        sortBy = string.Empty;
+        currentPage = 1;
+        await LoadProducts();
+    }
+
+    private bool HasActiveFilters()
+    {
+        return !string.IsNullOrWhiteSpace(searchQuery) ||
+               !string.IsNullOrWhiteSpace(selectedCategoryId) ||
+               minPrice.HasValue ||
+               maxPrice.HasValue ||
+               !string.IsNullOrWhiteSpace(selectedStoreId);
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page >= 1 && page <= paginatedResponse.TotalPages)
+        {
+            currentPage = page;
+            await LoadProducts();
+        }
+    }
+
+    private int GetStartPage()
+    {
+        return Math.Max(1, paginatedResponse.PageNumber - 2);
+    }
+
+    private int GetEndPage()
+    {
+        return Math.Min(paginatedResponse.TotalPages, paginatedResponse.PageNumber + 2);
+    }
+
+    private (string?, string?) ParseSortBy(string sortByValue)
+    {
+        if (string.IsNullOrWhiteSpace(sortByValue))
+            return (null, "desc");
+
+        var parts = sortByValue.Split('_');
+        if (parts.Length != 2)
+            return (null, "desc");
+
+        return (parts[0], parts[1]);
     }
 
     private void ViewProduct(Guid productId)

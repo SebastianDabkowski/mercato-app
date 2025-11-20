@@ -38,6 +38,11 @@ public interface IProductService
     Task<List<PublicProductDto>> GetAllPublishedProductsAsync();
 
     /// <summary>
+    /// Search and filter published products with pagination.
+    /// </summary>
+    Task<PaginatedProductsResponse> SearchProductsAsync(ProductSearchRequest request);
+
+    /// <summary>
     /// Delete a product.
     /// </summary>
     Task<bool> DeleteProductAsync(Guid productId, Guid storeId);

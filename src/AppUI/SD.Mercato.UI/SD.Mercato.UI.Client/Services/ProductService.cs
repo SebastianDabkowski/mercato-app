@@ -92,6 +92,46 @@ public class CategoryDto
     public DateTime CreatedAt { get; set; }
 }
 
+/// <summary>
+/// Request model for searching and filtering products.
+/// </summary>
+public class ProductSearchRequest
+{
+    public string? SearchQuery { get; set; }
+    public Guid? CategoryId { get; set; }
+    public decimal? MinPrice { get; set; }
+    public decimal? MaxPrice { get; set; }
+    public Guid? StoreId { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 12;
+    public string? SortBy { get; set; }
+    public string? SortDirection { get; set; } = "desc";
+}
+
+/// <summary>
+/// Paginated response for product search results.
+/// </summary>
+public class PaginatedProductsResponse
+{
+    public List<PublicProductDto> Products { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public bool HasPreviousPage => PageNumber > 1;
+    public bool HasNextPage => PageNumber < TotalPages;
+}
+
+/// <summary>
+/// Lightweight store DTO for listing purposes.
+/// </summary>
+public class StoreListItemDto
+{
+    public Guid Id { get; set; }
+    public string StoreName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+}
+
 public class CreateCategoryRequest
 {
     public string Name { get; set; } = string.Empty;
@@ -109,6 +149,7 @@ public interface IProductService
     Task<ProductDto?> GetProductByIdAsync(Guid productId);
     Task<List<ProductDto>> GetMyProductsAsync();
     Task<List<PublicProductDto>> GetCatalogAsync();
+    Task<PaginatedProductsResponse> SearchProductsAsync(ProductSearchRequest request);
     Task<bool> DeleteProductAsync(Guid productId);
 }
 
@@ -200,6 +241,28 @@ public class ProductService : IProductService
         }
     }
 
+    public async Task<PaginatedProductsResponse> SearchProductsAsync(ProductSearchRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/products/search", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<PaginatedProductsResponse>();
+                return result ?? new PaginatedProductsResponse();
+            }
+            return new PaginatedProductsResponse();
+        }
+        catch (HttpRequestException)
+        {
+            return new PaginatedProductsResponse();
+        }
+        catch (TaskCanceledException)
+        {
+            return new PaginatedProductsResponse();
+        }
+    }
+
     public async Task<bool> DeleteProductAsync(Guid productId)
     {
         try
@@ -261,6 +324,40 @@ public class CategoryService : ICategoryService
         catch
         {
             return null;
+        }
+    }
+}
+
+/// <summary>
+/// Interface for store service.
+/// </summary>
+public interface IStoreService
+{
+    Task<List<StoreListItemDto>> GetActiveStoresAsync();
+}
+
+/// <summary>
+/// Store service for Blazor WebAssembly client.
+/// </summary>
+public class StoreService : IStoreService
+{
+    private readonly HttpClient _httpClient;
+
+    public StoreService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<List<StoreListItemDto>> GetActiveStoresAsync()
+    {
+        try
+        {
+            var result = await _httpClient.GetFromJsonAsync<List<StoreListItemDto>>("api/stores/active");
+            return result ?? new List<StoreListItemDto>();
+        }
+        catch
+        {
+            return new List<StoreListItemDto>();
         }
     }
 }

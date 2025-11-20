@@ -177,7 +177,68 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<List<PublicProductDto>>> GetCatalog()
     {
         var products = await _productService.GetAllPublishedProductsAsync();
+        await PopulateStoreNamesAsync(products);
         return Ok(products);
+    }
+
+    /// <summary>
+    /// Search and filter products with pagination.
+    /// </summary>
+    [HttpPost("search")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PaginatedProductsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PaginatedProductsResponse>> SearchProducts([FromBody] ProductSearchRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        // Validate MinPrice vs MaxPrice relationship
+        if (request.MinPrice.HasValue && request.MaxPrice.HasValue && request.MinPrice > request.MaxPrice)
+        {
+            ModelState.AddModelError("MinPrice", "Minimum price cannot be greater than maximum price");
+            return BadRequest(ModelState);
+        }
+        var result = await _productService.SearchProductsAsync(request);
+        await PopulateStoreNamesAsync(result.Products);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Helper method to populate store names for product DTOs.
+    /// </summary>
+    private async Task PopulateStoreNamesAsync(List<PublicProductDto> products)
+    {
+        if (products.Count == 0) return;
+
+        // Get unique store IDs
+        var storeIds = products.Select(p => p.StoreId).Distinct().ToList();
+        
+        // Fetch store information for all unique stores
+        var storeDict = new Dictionary<Guid, string>();
+        foreach (var storeId in storeIds)
+        {
+            var store = await _storeService.GetStoreByIdAsync(storeId);
+            if (store != null)
+            {
+                storeDict[storeId] = store.DisplayName ?? store.StoreName;
+            }
+        }
+
+        // Populate store names
+        foreach (var product in products)
+        {
+            if (storeDict.TryGetValue(product.StoreId, out var storeName))
+            {
+                product.StoreName = storeName;
+            }
+            else
+            {
+                product.StoreName = "Unknown Store";
+            }
+        }
     }
 
     /// <summary>
