@@ -201,13 +201,22 @@ public class ProductService : IProductService
                 Product = await MapToDtoAsync(product)
             };
         }
-        catch (Exception ex)
+        catch (DbUpdateException dbEx)
         {
-            _logger.LogError(ex, "Error updating product {ProductId}", productId);
+            _logger.LogError(dbEx, "Database error updating product {ProductId}", productId);
             return new ProductResponse
             {
                 Success = false,
-                Message = "An error occurred while updating the product. Please try again."
+                Message = "A database error occurred while updating the product. Please try again."
+            };
+        }
+        catch (ArgumentException argEx)
+        {
+            _logger.LogError(argEx, "Invalid argument updating product {ProductId}", productId);
+            return new ProductResponse
+            {
+                Success = false,
+                Message = "Invalid input provided for updating the product."
             };
         }
     }
