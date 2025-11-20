@@ -166,12 +166,24 @@ public class CartController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        // Validate session ID format (must be a valid GUID)
+        if (!Guid.TryParse(request.SessionId, out var sessionGuid))
+        {
+            return BadRequest(new { message = "Invalid session ID format" });
+        }
+
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized(new { message = "User not authenticated" });
         }
 
+        // Check that the guest cart exists before attempting migration
+        var guestCart = await _cartService.GetCartBySessionIdAsync(request.SessionId);
+        if (guestCart == null)
+        {
+            return BadRequest(new { message = "Guest cart not found or already migrated" });
+        }
         var migrated = await _cartService.MigrateGuestCartAsync(request.SessionId, userId);
 
         if (!migrated)
