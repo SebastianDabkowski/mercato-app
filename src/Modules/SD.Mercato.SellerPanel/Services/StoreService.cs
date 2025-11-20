@@ -117,14 +117,19 @@ public class StoreService : IStoreService
                 Store = MapToDto(store)
             };
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Error creating store for user {UserId}", userId);
+            _logger.LogError(ex, "Database error creating store for user {UserId}", userId);
             return new StoreResponse
             {
                 Success = false,
-                Message = "An error occurred while creating the store. Please try again."
+                Message = "A database error occurred while creating the store. Please try again."
             };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error creating store for user {UserId}", userId);
+            throw; // Rethrow unexpected exceptions for higher-level handling
         }
     }
 
