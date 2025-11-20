@@ -1,0 +1,149 @@
+@page "/catalog/{ProductId:guid}"
+@using SD.Mercato.UI.Client.Services
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+
+<PageTitle>@(product?.Title ?? "Product Details")</PageTitle>
+
+<div class="container mt-4">
+    @if (loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (product == null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> Product not found.
+        </div>
+        <button class="btn btn-secondary" @onclick="BackToCatalog">
+            <i class="bi bi-arrow-left"></i> Back to Catalog
+        </button>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/catalog">Catalog</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@product.Title</li>
+            </ol>
+        </nav>
+
+        <div class="row">
+            <div class="col-md-6">
+                @if (product.ImageUrls.Any())
+                {
+                    <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+                        <div class="carousel-inner">
+                            @for (int i = 0; i < product.ImageUrls.Count; i++)
+                            {
+                                var index = i;
+                                <div class="carousel-item @(index == 0 ? "active" : "")">
+                                    <img src="@product.ImageUrls[index]" class="d-block w-100" alt="@product.Title" style="max-height: 500px; object-fit: contain;">
+                                </div>
+                            }
+                        </div>
+                        @if (product.ImageUrls.Count > 1)
+                        {
+                            <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 400px;">
+                        <i class="bi bi-image" style="font-size: 5rem;"></i>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-6">
+                <h2>@product.Title</h2>
+                
+                @if (!string.IsNullOrEmpty(product.CategoryName))
+                {
+                    <p class="text-muted">
+                        <i class="bi bi-tag"></i> @product.CategoryName
+                    </p>
+                }
+
+                <div class="mb-3">
+                    <h3 class="text-primary">@product.Price.ToString("C") @product.Currency</h3>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Stock:</strong> 
+                    @if (product.StockQuantity > 0)
+                    {
+                        <span class="badge bg-success">@product.StockQuantity in stock</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Out of stock</span>
+                    }
+                </div>
+
+                <div class="mb-4">
+                    <h5>Description</h5>
+                    <p style="white-space: pre-wrap;">@product.Description</p>
+                </div>
+
+                @if (product.StockQuantity > 0)
+                {
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-lg" disabled>
+                            <i class="bi bi-cart-plus"></i> Add to Cart (Coming Soon)
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> This product is currently out of stock.
+                    </div>
+                }
+
+                <div class="mt-3">
+                    <button class="btn btn-secondary" @onclick="BackToCatalog">
+                        <i class="bi bi-arrow-left"></i> Back to Catalog
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    private ProductDto? product;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProduct();
+    }
+
+    private async Task LoadProduct()
+    {
+        loading = true;
+        product = await ProductService.GetProductByIdAsync(ProductId);
+        loading = false;
+    }
+
+    private void BackToCatalog()
+    {
+        Navigation.NavigateTo("/catalog");
+    }
+}

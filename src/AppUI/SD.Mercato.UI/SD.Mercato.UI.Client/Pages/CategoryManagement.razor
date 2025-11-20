@@ -1,0 +1,206 @@
+@page "/admin/categories"
+@using SD.Mercato.UI.Client.Services
+@inject ICategoryService CategoryService
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrator")]
+
+<PageTitle>Category Management</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Category Management</h3>
+        <button class="btn btn-primary" @onclick="ShowCreateForm">
+            <i class="bi bi-plus-circle"></i> Add Category
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (showForm)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Create Category</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@createModel" OnValidSubmit="HandleCreateCategory">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Category Name <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="createModel.Name" class="form-control" placeholder="e.g., Electronics" />
+                        <ValidationMessage For="@(() => createModel.Name)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <InputTextArea @bind-Value="createModel.Description" class="form-control" rows="3" placeholder="Optional category description" />
+                        <ValidationMessage For="@(() => createModel.Description)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Parent Category (Optional)</label>
+                        <InputSelect @bind-Value="createModel.ParentCategoryId" class="form-select">
+                            <option value="">-- None (Top-level category) --</option>
+                            @foreach (var category in categories)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@submitting">
+                            @if (submitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            }
+                            Create Category
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="HideCreateForm">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (categories.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No categories yet. Click "Add Category" to create one.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Parent Category</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var category in categories)
+                    {
+                        <tr>
+                            <td>@category.Name</td>
+                            <td>@(category.Description ?? "-")</td>
+                            <td>
+                                @if (category.ParentCategoryId.HasValue)
+                                {
+                                    var parent = categories.FirstOrDefault(c => c.Id == category.ParentCategoryId);
+                                    @(parent?.Name ?? "Unknown")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (category.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td>@category.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CategoryDto> categories = new();
+    private CreateCategoryRequest createModel = new();
+    private bool loading = true;
+    private bool submitting = false;
+    private bool showForm = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        loading = true;
+        categories = await CategoryService.GetActiveCategoriesAsync();
+        loading = false;
+    }
+
+    private void ShowCreateForm()
+    {
+        showForm = true;
+        createModel = new CreateCategoryRequest();
+    }
+
+    private void HideCreateForm()
+    {
+        showForm = false;
+        createModel = new CreateCategoryRequest();
+    }
+
+    private async Task HandleCreateCategory()
+    {
+        submitting = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var result = await CategoryService.CreateCategoryAsync(createModel);
+            
+            if (result != null)
+            {
+                successMessage = "Category created successfully!";
+                HideCreateForm();
+                await LoadCategories();
+            }
+            else
+            {
+                errorMessage = "Failed to create category. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}
