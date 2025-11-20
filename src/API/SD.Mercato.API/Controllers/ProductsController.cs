@@ -185,6 +185,7 @@ public class ProductsController : ControllerBase
     /// Search and filter products with pagination.
     /// </summary>
     [HttpPost("search")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(PaginatedProductsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PaginatedProductsResponse>> SearchProducts([FromBody] ProductSearchRequest request)
