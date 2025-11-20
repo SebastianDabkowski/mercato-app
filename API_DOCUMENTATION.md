@@ -159,6 +159,18 @@ Login with email and password.
 }
 ```
 
+**Error Response (Account Locked):**
+```json
+{
+  "success": false,
+  "message": "Account is locked due to multiple failed login attempts. Please try again later.",
+  "token": null,
+  "user": null
+}
+```
+
+**Note:** After 5 failed login attempts, the account is locked for 15 minutes to prevent brute-force attacks.
+
 ---
 
 #### POST /api/auth/external-login
