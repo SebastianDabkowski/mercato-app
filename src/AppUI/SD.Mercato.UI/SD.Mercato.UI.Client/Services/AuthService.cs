@@ -85,9 +85,18 @@ public class AuthService : IAuthService
                 await _httpClient.PostAsync("api/auth/logout", null);
             }
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            // Ignore errors during logout API call
+            // Ignore HTTP errors during logout API call
+        }
+        catch (TaskCanceledException ex)
+        {
+            // Ignore cancellation errors during logout API call
+        }
+        catch (Exception ex)
+        {
+            // Log unexpected errors during logout API call
+            Console.Error.WriteLine($"Unexpected error during logout: {ex}");
         }
         finally
         {
