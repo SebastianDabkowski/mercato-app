@@ -135,12 +135,16 @@ public class OrderService : IOrderService
                 // Create SubOrderItems
                 foreach (var cartItem in storeItems)
                 {
+                    // TODO: Get actual SKU from Product entity via ProductService
+                    var product = await _productService.GetProductByIdAsync(cartItem.ProductId);
+                    var productSku = product?.SKU ?? cartItem.ProductId.ToString();
+
                     var subOrderItem = new SubOrderItem
                     {
                         Id = Guid.NewGuid(),
                         SubOrderId = subOrder.Id,
                         ProductId = cartItem.ProductId,
-                        ProductSku = cartItem.ProductTitle, // TODO: Get actual SKU from product
+                        ProductSku = productSku,
                         ProductTitle = cartItem.ProductTitle,
                         ProductImageUrl = cartItem.ProductImageUrl,
                         Quantity = cartItem.Quantity,
@@ -233,6 +237,22 @@ public class OrderService : IOrderService
 
     public async Task<bool> UpdatePaymentStatusAsync(Guid orderId, string paymentStatus, string? transactionId)
     {
+        // Validate payment status
+        var validStatuses = new[] 
+        { 
+            OrderPaymentStatus.Pending, 
+            OrderPaymentStatus.Paid, 
+            OrderPaymentStatus.Failed, 
+            OrderPaymentStatus.Refunded 
+        };
+
+        if (!validStatuses.Contains(paymentStatus))
+        {
+            _logger.LogWarning("Invalid payment status attempted: {PaymentStatus} for OrderId={OrderId}", 
+                paymentStatus, orderId);
+            return false;
+        }
+
         var order = await _dbContext.Orders.FindAsync(orderId);
         if (order == null)
         {
@@ -301,17 +321,19 @@ public class OrderService : IOrderService
     private static string GenerateOrderNumber()
     {
         // Generate unique order number: MKT-YYYY-NNNNNN
+        // Using timestamp + GUID for uniqueness (no need for cryptographic random here)
         var timestamp = DateTime.UtcNow;
-        var random = new Random().Next(100000, 999999);
-        return $"MKT-{timestamp:yyyy}-{random:D6}";
+        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+        return $"MKT-{timestamp:yyyy}-{guidPart}";
     }
 
     private static string GenerateSubOrderNumber()
     {
         // Generate unique sub-order number: SUB-YYYY-NNNNNN
+        // Using timestamp + GUID for uniqueness (no need for cryptographic random here)
         var timestamp = DateTime.UtcNow;
-        var random = new Random().Next(100000, 999999);
-        return $"SUB-{timestamp:yyyy}-{random:D6}";
+        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+        return $"SUB-{timestamp:yyyy}-{guidPart}";
     }
 
     private static decimal CalculateShippingCost(string shippingMethod, int itemCount)

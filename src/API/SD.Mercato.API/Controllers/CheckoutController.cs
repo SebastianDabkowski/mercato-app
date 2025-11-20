@@ -58,15 +58,26 @@ public class CheckoutController : ControllerBase
 
     /// <summary>
     /// Update payment status (called by payment gateway webhook or payment confirmation page).
+    /// TODO: SECURITY CRITICAL - This endpoint must validate payment gateway signatures before production.
+    /// TODO: Implement signature verification based on your chosen payment provider (Stripe, PayU, etc.).
+    /// TODO: Without signature validation, this endpoint is vulnerable to fraudulent payment confirmations.
     /// </summary>
     [HttpPost("payment-callback")]
     [AllowAnonymous] // Payment gateway may call this endpoint
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> PaymentCallback([FromBody] PaymentCallbackRequest request)
     {
-        // TODO: Validate payment gateway signature to prevent fraud
-        // TODO: Use proper payment gateway verification instead of accepting any callback
+        // TODO: IMPLEMENT PAYMENT GATEWAY SIGNATURE VALIDATION HERE
+        // Example (Stripe):
+        // var signature = Request.Headers["Stripe-Signature"].FirstOrDefault();
+        // if (!ValidateStripeSignature(signature, requestBody))
+        // {
+        //     return Unauthorized(new { message = "Invalid signature" });
+        // }
+        //
+        // Until implemented, this is a security vulnerability. Only use in development/testing.
 
         if (!ModelState.IsValid)
         {
