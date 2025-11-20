@@ -254,10 +254,10 @@
         var request = new ProductSearchRequest
         {
             SearchQuery = string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
-            CategoryId = string.IsNullOrWhiteSpace(selectedCategoryId) ? null : Guid.Parse(selectedCategoryId),
+            CategoryId = string.IsNullOrWhiteSpace(selectedCategoryId) || !Guid.TryParse(selectedCategoryId, out var catId) ? null : catId,
             MinPrice = minPrice,
             MaxPrice = maxPrice,
-            StoreId = string.IsNullOrWhiteSpace(selectedStoreId) ? null : Guid.Parse(selectedStoreId),
+            StoreId = string.IsNullOrWhiteSpace(selectedStoreId) || !Guid.TryParse(selectedStoreId, out var stId) ? null : stId,
             PageNumber = currentPage,
             PageSize = pageSize,
             SortBy = sortField,
