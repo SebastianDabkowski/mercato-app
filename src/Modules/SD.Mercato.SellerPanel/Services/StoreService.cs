@@ -174,14 +174,28 @@ public class StoreService : IStoreService
                 Store = MapToDto(store)
             };
         }
-        catch (Exception ex)
+        catch (DbUpdateConcurrencyException ex)
         {
-            _logger.LogError(ex, "Error updating store {StoreId}", storeId);
+            _logger.LogError(ex, "Concurrency error updating store {StoreId}", storeId);
             return new StoreResponse
             {
                 Success = false,
-                Message = "An error occurred while updating the store profile. Please try again."
+                Message = "The store profile was updated by another process. Please reload and try again."
             };
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating store {StoreId}", storeId);
+            return new StoreResponse
+            {
+                Success = false,
+                Message = "A database error occurred while updating the store profile. Please try again."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error updating store {StoreId}", storeId);
+            throw; // Rethrow unexpected exceptions for higher-level handling
         }
     }
 
