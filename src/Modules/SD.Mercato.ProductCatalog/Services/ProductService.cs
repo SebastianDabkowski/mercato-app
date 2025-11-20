@@ -299,7 +299,7 @@ public class ProductService : IProductService
     {
         var query = _context.Products.Where(p => p.StoreId == storeId && p.SKU == sku);
         
-        if (excludeProductId != null)
+        if (excludeProductId.HasValue)
         {
             query = query.Where(p => p.Id != excludeProductId.Value);
         }
@@ -351,11 +351,6 @@ public class ProductService : IProductService
         catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to deserialize image URLs. Returning empty list. Invalid JSON: {ImageUrls}", imageUrls);
-            return new List<string>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error deserializing image URLs. Returning empty list.");
             return new List<string>();
         }
     }
