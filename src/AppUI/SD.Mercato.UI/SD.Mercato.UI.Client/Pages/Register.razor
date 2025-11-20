@@ -1,0 +1,153 @@
+@page "/register"
+@using SD.Mercato.UI.Client.Models
+@using SD.Mercato.UI.Client.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Register - Mercato</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Create Your Mercato Account</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success" role="alert">
+                            @successMessage
+                        </div>
+                    }
+
+                    <EditForm Model="@registerRequest" OnValidSubmit="@HandleRegister">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <InputText id="firstName" class="form-control" @bind-Value="registerRequest.FirstName" placeholder="First name" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <InputText id="lastName" class="form-control" @bind-Value="registerRequest.LastName" placeholder="Last name" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" type="email" class="form-control" @bind-Value="registerRequest.Email" placeholder="Enter your email" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="registerRequest.Password" placeholder="Create a password" />
+                            <small class="form-text text-muted">
+                                Password must be at least 8 characters with uppercase, lowercase, and digit.
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="phoneNumber" class="form-label">Phone Number (Optional)</label>
+                            <InputText id="phoneNumber" class="form-control" @bind-Value="registerRequest.PhoneNumber" placeholder="Phone number" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="role" class="form-label">I want to register as:</label>
+                            <InputSelect id="role" class="form-select" @bind-Value="registerRequest.Role">
+                                <option value="Buyer">Buyer (Shop and purchase products)</option>
+                                <option value="Seller">Seller (Sell products on the platform)</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                }
+                                Create Account
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <hr />
+
+                    <div class="text-center">
+                        <p>Already have an account? <a href="/login">Login here</a></p>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-grid gap-2">
+                        <p class="text-center text-muted">Or sign up with:</p>
+                        <button class="btn btn-outline-danger" @onclick="HandleGoogleRegister" disabled="@isLoading">
+                            <i class="bi bi-google me-2"></i> Sign up with Google
+                        </button>
+                        <button class="btn btn-outline-primary" @onclick="HandleFacebookRegister" disabled="@isLoading">
+                            <i class="bi bi-facebook me-2"></i> Sign up with Facebook
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly RegisterRequest registerRequest = new() { Role = "Buyer" };
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+
+    private async Task HandleRegister()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(registerRequest);
+
+            if (result.Success)
+            {
+                successMessage = "Registration successful! Redirecting to home...";
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = result.Message ?? "Registration failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSocialRegister(string provider)
+    {
+        // TODO: Implement social registration flow
+        // This requires redirecting to the OAuth provider and handling the callback
+        errorMessage = $"{provider} registration is not yet implemented in this demo.";
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleGoogleRegister() => await HandleSocialRegister("Google");
+    private async Task HandleFacebookRegister() => await HandleSocialRegister("Facebook");
+}

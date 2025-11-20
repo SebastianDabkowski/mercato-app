@@ -7,8 +7,8 @@ This document tracks the implementation status of the Mercato MVP features again
 ## 📊 Overall Progress
 
 **Last Updated:** 2025-11-20  
-**Status:** Foundation - Documentation Complete  
-**Overall Completion:** 5% (Documentation phase)
+**Status:** Users Module Complete - Authentication & Authorization Implemented  
+**Overall Completion:** 15% (Foundation + Users Module)
 
 ---
 
@@ -17,7 +17,7 @@ This document tracks the implementation status of the Mercato MVP features again
 | Milestone | Target Week | Status | Completion |
 |-----------|-------------|--------|------------|
 | 1. Foundation & Documentation | Week 0 | ✅ Complete | 100% |
-| 2. User & Seller Onboarding | Week 1-2 | 🔄 Not Started | 0% |
+| 2. User & Seller Onboarding | Week 1-2 | ✅ Authentication Complete, Seller Onboarding TODO | 50% |
 | 3. Product Management | Week 3-4 | 🔄 Not Started | 0% |
 | 4. Buyer Experience | Week 5-6 | 🔄 Not Started | 0% |
 | 5. Checkout & Payment | Week 7-8 | 🔄 Not Started | 0% |
@@ -35,33 +35,46 @@ This document tracks the implementation status of the Mercato MVP features again
 - [x] Domain model reference created
 - [x] Quick start guide created
 - [x] PRD reviewed and validated
-- [x] Architecture documentation reviewed
-- [ ] API documentation setup (Swagger/OpenAPI)
-- [ ] Database schema documentation
+- [x] Architecture documentation reviewed and updated (auth section)
+- [x] API documentation created (AUTH endpoints)
+- [x] Database setup guide created
+- [ ] Swagger/OpenAPI documentation (TODO)
 
 #### Project Setup
 - [x] Solution structure validated
 - [x] Module projects created
 - [x] Build system verified
-- [ ] Database setup (EF Core migrations)
-- [ ] Logging infrastructure
-- [ ] Exception handling middleware
-- [ ] Application Insights integration
+- [x] Database setup (EF Core migrations created)
+- [x] JWT authentication configured
+- [x] OAuth providers configured (placeholders)
+- [ ] Logging infrastructure (basic logging present, structured logging TODO)
+- [ ] Exception handling middleware (TODO)
+- [ ] Application Insights integration (TODO)
 
 ---
 
-### 2. Users Module 🔄 Not Started
+### 2. Users Module ✅ Complete
 
 #### Authentication & Authorization
-- [ ] User entity and DbContext
-- [ ] User registration endpoint
-- [ ] Email verification flow
-- [ ] Login/logout endpoints
-- [ ] Password hashing (bcrypt or similar)
-- [ ] JWT token generation
-- [ ] Role-based authorization
-- [ ] Email verification service
-- [ ] Password reset flow
+- [x] User entity and DbContext
+- [x] User registration endpoint
+- [x] Email verification flow (auto-verified in MVP)
+- [x] Login/logout endpoints
+- [x] Password hashing (PBKDF2 via ASP.NET Core Identity)
+- [x] JWT token generation
+- [x] Role-based authorization (Buyer, Seller, Administrator)
+- [x] OAuth 2.0 integration (Google, Facebook)
+- [x] SellerStaff entity for future multi-user stores
+- [ ] Password reset flow (TODO)
+- [ ] Email verification with actual emails (TODO)
+
+**Frontend:**
+- [x] Login page with email/password
+- [x] Registration page with role selection
+- [x] Profile page for viewing/editing user info
+- [x] AuthDisplay component with role-based menus
+- [x] Authentication state management (LocalStorage + JWT)
+- [x] Social login buttons (UI only, full OAuth flow TODO)
 
 **Tests:**
 - [ ] Unit tests for user validation
@@ -69,10 +82,13 @@ This document tracks the implementation status of the Mercato MVP features again
 - [ ] Email verification tests
 
 **Business Rules Implemented:**
-- [ ] Email uniqueness validation
-- [ ] Password complexity requirements
-- [ ] Age requirement validation (18+)
-- [ ] Email verification before full access
+- [x] Email uniqueness validation
+- [x] Password complexity requirements (8 chars, uppercase, lowercase, digit)
+- [ ] Age requirement validation (18+) - TODO
+- [x] Email auto-verification (production should use actual emails)
+- [x] Role assignment (Buyer, Seller, Administrator)
+- [x] JWT token with claims
+- [x] Seller staff extensibility model
 
 ---
 
@@ -311,12 +327,15 @@ This document tracks the implementation status of the Mercato MVP features again
 ## 🔧 API Endpoints Status
 
 ### Authentication & Users
-- [ ] POST /api/auth/register
-- [ ] POST /api/auth/login
-- [ ] POST /api/auth/logout
-- [ ] POST /api/auth/verify-email
-- [ ] GET /api/users/profile
-- [ ] PUT /api/users/profile
+- [x] POST /api/auth/register
+- [x] POST /api/auth/login
+- [x] POST /api/auth/logout
+- [x] POST /api/auth/external-login
+- [ ] POST /api/auth/verify-email (TODO)
+- [ ] POST /api/auth/forgot-password (TODO)
+- [ ] POST /api/auth/reset-password (TODO)
+- [x] GET /api/users/profile
+- [x] PUT /api/users/profile
 
 ### Sellers & Stores
 - [ ] POST /api/sellers/stores
@@ -375,8 +394,9 @@ This document tracks the implementation status of the Mercato MVP features again
 
 ## 🗄️ Database Migrations Status
 
-- [ ] Initial migration created
-- [ ] Users tables
+- [x] Initial migration created for Users module
+- [x] Users tables (AspNetUsers, AspNetRoles, AspNetUserRoles, etc.)
+- [x] SellerStaff table (future-proof for multi-user stores)
 - [ ] Stores tables
 - [ ] Products and Categories tables
 - [ ] Cart tables
@@ -385,9 +405,9 @@ This document tracks the implementation status of the Mercato MVP features again
 - [ ] Payout tables
 - [ ] Shipping tables
 - [ ] Notification tables
-- [ ] Indexes created
-- [ ] Foreign key constraints
-- [ ] Seed data (categories, shipping methods)
+- [ ] Indexes created (basic indexes via Identity, custom indexes TODO)
+- [ ] Foreign key constraints (within Users module complete, cross-module TODO)
+- [ ] Seed data (roles seeded automatically, categories/shipping TODO)
 
 ---
 
@@ -453,31 +473,59 @@ From business-domain.md TODOs:
 - ✅ Implementation tracking document created
 - ✅ README updated with documentation links
 
+### Week 1 - Authentication & Authorization
+- ✅ Users module implemented with ASP.NET Core Identity
+- ✅ User, Role, and SellerStaff entities created
+- ✅ Database context and migrations created
+- ✅ JWT authentication configured
+- ✅ OAuth 2.0 configured (Google, Facebook)
+- ✅ Registration endpoint (email/password)
+- ✅ Login endpoint (email/password)
+- ✅ External login endpoint (OAuth)
+- ✅ Logout endpoint
+- ✅ User profile endpoints (GET, PUT)
+- ✅ Role-based authorization with policies
+- ✅ Frontend login page
+- ✅ Frontend registration page
+- ✅ Frontend profile page
+- ✅ AuthDisplay component with role-based menus
+- ✅ Authentication state management
+- ✅ API documentation for auth endpoints
+- ✅ Architecture documentation updated
+- ✅ Database setup guide created
+
 ---
 
 ## 📅 Next Steps
 
-### Immediate (Week 1)
-1. Set up database infrastructure
-   - Configure connection strings
-   - Set up EF Core migrations
-   - Create initial migration
+### Immediate (Week 1-2)
+1. ~~Set up database infrastructure~~ ✅ Complete
+   - ~~Configure connection strings~~ ✅ Complete
+   - ~~Set up EF Core migrations~~ ✅ Complete
+   - ~~Create initial migration~~ ✅ Complete
 
-2. Implement Users module
-   - User entity and authentication
-   - Registration and login endpoints
-   - Email verification
+2. ~~Implement Users module~~ ✅ Complete
+   - ~~User entity and authentication~~ ✅ Complete
+   - ~~Registration and login endpoints~~ ✅ Complete
+   - ~~Email verification (auto-verified in MVP)~~ ✅ Complete
 
-3. Set up logging and monitoring
-   - Application Insights
+3. Implement Seller Panel module
+   - Store entity and DbContext
+   - Store registration/onboarding flow
+   - Store profile management
+   - Bank account details (basic validation)
+
+4. Set up exception handling and logging
    - Exception handling middleware
+   - Structured logging with Serilog
    - Request correlation IDs
 
 ### Short Term (Weeks 2-4)
 1. Complete Seller Panel module
 2. Implement Product Catalog module
-3. Set up API documentation (Swagger)
-4. Begin unit testing
+3. Set up Swagger/OpenAPI documentation
+4. Begin unit and integration testing
+5. Add email service for verification (SendGrid/SMTP)
 
 ---
 

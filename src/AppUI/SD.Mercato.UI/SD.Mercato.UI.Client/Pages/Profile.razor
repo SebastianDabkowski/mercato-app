@@ -1,0 +1,196 @@
+@page "/profile"
+@using SD.Mercato.UI.Client.Models
+@using SD.Mercato.UI.Client.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>My Profile - Mercato</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>My Profile</h3>
+                </div>
+                <div class="card-body">
+                    @if (currentUser == null)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-4">
+                            <h5>Account Information</h5>
+                            <p><strong>Email:</strong> @currentUser.Email</p>
+                            <p><strong>Role:</strong> <span class="badge bg-primary">@currentUser.Role</span></p>
+                            <p><strong>Email Verified:</strong> @(currentUser.IsEmailVerified ? "✓ Yes" : "✗ No")</p>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @errorMessage
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success" role="alert">
+                                @successMessage
+                            </div>
+                        }
+
+                        @if (isEditing)
+                        {
+                            <EditForm Model="@updateRequest" OnValidSubmit="@HandleUpdateProfile">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary class="text-danger" />
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="firstName" class="form-label">First Name</label>
+                                        <InputText id="firstName" class="form-control" @bind-Value="updateRequest.FirstName" />
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="lastName" class="form-label">Last Name</label>
+                                        <InputText id="lastName" class="form-control" @bind-Value="updateRequest.LastName" />
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="phoneNumber" class="form-label">Phone Number</label>
+                                    <InputText id="phoneNumber" class="form-control" @bind-Value="updateRequest.PhoneNumber" />
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                        @if (isLoading)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        }
+                                        Save Changes
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                                </div>
+                            </EditForm>
+                        }
+                        else
+                        {
+                            <div>
+                                <h5>Personal Information</h5>
+                                <p><strong>Name:</strong> @currentUser.FirstName @currentUser.LastName</p>
+                                <p><strong>Phone:</strong> @(string.IsNullOrEmpty(currentUser.PhoneNumber) ? "Not provided" : currentUser.PhoneNumber)</p>
+                                
+                                <button class="btn btn-primary" @onclick="StartEdit">Edit Profile</button>
+                            </div>
+                        }
+
+                        <hr />
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger" @onclick="HandleLogout" disabled="@isLoading">
+                                Logout
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserDto? currentUser;
+    private UpdateProfileRequest updateRequest = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (!isAuthenticated)
+        {
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
+        currentUser = await AuthService.GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            updateRequest = new UpdateProfileRequest
+            {
+                FirstName = currentUser.FirstName,
+                LastName = currentUser.LastName,
+                PhoneNumber = currentUser.PhoneNumber
+            };
+        }
+    }
+
+    private void StartEdit()
+    {
+        isEditing = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        errorMessage = null;
+        successMessage = null;
+        
+        if (currentUser != null)
+        {
+            updateRequest = new UpdateProfileRequest
+            {
+                FirstName = currentUser.FirstName,
+                LastName = currentUser.LastName,
+                PhoneNumber = currentUser.PhoneNumber
+            };
+        }
+    }
+
+    private async Task HandleUpdateProfile()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            // TODO: Implement profile update API call
+            successMessage = "Profile updated successfully!";
+            isEditing = false;
+            
+            // Reload user profile
+            await LoadUserProfile();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        isLoading = true;
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+}

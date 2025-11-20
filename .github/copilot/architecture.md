@@ -161,21 +161,98 @@ Key rules:
 
 ## 10. Security and Authorization
 
-1. Authentication via JWT or OpenID Connect (TBD).
-2. Main roles:
-   - Buyer
-   - Seller
-   - Admin
-3. Authorization enforced both:
-   - at the API endpoint level
-   - inside domain logic
+### 10.1 Authentication
 
-Examples:
+The system uses **JWT (JSON Web Tokens)** for authentication:
 
-- Sellers may see only their products and orders.
-- Admins can see global data.
+1. **ASP.NET Core Identity** manages user accounts, passwords, and roles
+2. **JWT tokens** are issued upon successful login (email/password or OAuth)
+3. **OAuth 2.0** providers supported:
+   - Google
+   - Facebook
+   - Apple (can be added with minimal effort)
 
-The system must comply with GDPR for personal data.
+### 10.2 Authorization
+
+The system implements **role-based access control (RBAC)** with three primary roles:
+
+1. **Buyer**
+   - Can browse catalog
+   - Can manage own cart
+   - Can place orders
+   - Can view own order history
+   - Access only own data
+
+2. **Seller**
+   - Can manage own store
+   - Can add/edit/delete products
+   - Can view own orders
+   - Can view own financial reports
+   - Access only store-specific data
+   - Each seller begins with a primary owner account
+   - **Future**: Support for staff accounts with granular permissions
+
+3. **Administrator**
+   - Can manage the entire platform
+   - Can access global configuration
+   - Can view all reports
+   - Full system access
+
+### 10.3 Authorization Enforcement
+
+Authorization is enforced at multiple levels:
+
+1. **API Endpoint Level** - Using `[Authorize]` attributes and policies:
+   ```csharp
+   [Authorize(Policy = "RequireSellerRole")]
+   public class SellerProductsController { }
+   ```
+
+2. **Domain Logic Level** - Business rules ensure data isolation:
+   - Sellers can only access their own store data
+   - Buyers can only access their own orders
+   - Admins have unrestricted access
+
+3. **Database Level** - Foreign keys and queries enforce data boundaries
+
+### 10.4 JWT Token Structure
+
+Tokens contain the following claims:
+- User ID (nameid)
+- Email
+- Name
+- Role
+- Token ID (jti)
+- Issuer and Audience
+- Expiration (default: 60 minutes)
+
+### 10.5 Seller Staff Extensibility
+
+The database model supports future multi-user seller accounts:
+
+- **SellerStaff** table links users to stores
+- **IsOwner** flag identifies primary owner
+- **JobTitle** and **IsActive** fields for staff management
+- Designed for future granular permissions (CanManageProducts, CanProcessOrders, etc.)
+
+When the staff account UI is built later, the backend requires minimal changes.
+
+### 10.6 Security Best Practices
+
+1. Passwords are hashed using **PBKDF2** (ASP.NET Core Identity default)
+2. Password complexity requirements enforced (min 8 chars, uppercase, lowercase, digit)
+3. Email uniqueness enforced at database level
+4. JWT secret key must be changed in production
+5. OAuth client secrets stored securely (User Secrets or Azure Key Vault)
+6. CORS restricted to specific domains in production
+
+### 10.7 Compliance
+
+The system must comply with **GDPR** for personal data:
+- User consent for data processing
+- Right to access personal data
+- Right to delete account
+- Data portability
 
 ---
 
