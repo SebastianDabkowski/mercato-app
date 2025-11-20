@@ -1,4 +1,5 @@
 using SD.Mercato.Users;
+using SD.Mercato.SellerPanel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,9 @@ builder.Services.AddOpenApi();
 
 // Add Users module (authentication and authorization)
 builder.Services.AddUsersModule(builder.Configuration);
+
+// Add SellerPanel module (store management)
+builder.Services.AddSellerPanelModule(builder.Configuration);
 
 // Add CORS
 // TODO: Restrict CORS to specific origins (frontend URL) before production deployment
