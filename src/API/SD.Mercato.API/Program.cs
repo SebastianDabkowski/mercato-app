@@ -2,6 +2,7 @@ using SD.Mercato.Users;
 using SD.Mercato.SellerPanel;
 using SD.Mercato.ProductCatalog;
 using SD.Mercato.Cart;
+using SD.Mercato.History;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,9 @@ builder.Services.AddProductCatalogModule(builder.Configuration);
 
 // Add Cart module (shopping cart management)
 builder.Services.AddCartModule(builder.Configuration);
+
+// Add History module (order management)
+builder.Services.AddHistoryModule(builder.Configuration);
 
 // Add CORS
 // TODO: Restrict CORS to specific origins (frontend URL) before production deployment
