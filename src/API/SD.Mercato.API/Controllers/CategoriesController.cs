@@ -22,10 +22,10 @@ public class CategoriesController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new category (admin only - for MVP, simplified to any authenticated user).
+    /// Create a new category (admin only).
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [Authorize(Roles = "Administrator")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
