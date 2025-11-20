@@ -28,7 +28,22 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    await UsersModuleExtensions.SeedRolesAsync(services);
+    var logger = services.GetService<ILogger<Program>>();
+    try
+    {
+        await UsersModuleExtensions.SeedRolesAsync(services);
+    }
+    catch (Exception ex)
+    {
+        if (logger != null)
+        {
+            logger.LogError(ex, "An error occurred while seeding roles.");
+        }
+        else
+        {
+            Console.Error.WriteLine($"An error occurred while seeding roles: {ex}");
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
