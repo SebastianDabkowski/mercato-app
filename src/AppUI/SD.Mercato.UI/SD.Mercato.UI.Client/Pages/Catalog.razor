@@ -337,7 +337,7 @@
 
     private async Task AddToCart(Guid productId)
     {
-        var result = await CartService.AddItemAsync(new AddToCartRequest
+        await CartService.AddItemAsync(new AddToCartRequest
         {
             ProductId = productId,
             Quantity = 1

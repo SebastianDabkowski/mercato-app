@@ -97,9 +97,16 @@ public class CartService : ICartService
     {
         try
         {
-            EnsureSessionHeader();
-            var cart = await _httpClient.GetFromJsonAsync<CartDto>("api/cart");
-            return cart;
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, "api/cart");
+            AddSessionHeader(requestMessage);
+            
+            var response = await _httpClient.SendAsync(requestMessage);
+            if (response.IsSuccessStatusCode)
+            {
+                UpdateSessionIdFromResponse(response);
+                return await response.Content.ReadFromJsonAsync<CartDto>();
+            }
+            return null;
         }
         catch
         {
@@ -111,8 +118,13 @@ public class CartService : ICartService
     {
         try
         {
-            EnsureSessionHeader();
-            var response = await _httpClient.PostAsJsonAsync("api/cart/items", request);
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "api/cart/items")
+            {
+                Content = JsonContent.Create(request)
+            };
+            AddSessionHeader(requestMessage);
+            
+            var response = await _httpClient.SendAsync(requestMessage);
             
             // Update session ID from response headers if provided
             UpdateSessionIdFromResponse(response);
@@ -128,6 +140,8 @@ public class CartService : ICartService
         }
         catch (Exception ex)
         {
+            // Log error for debugging
+            Console.Error.WriteLine($"Error adding item to cart: {ex.Message}");
             return new AddToCartResponse { Success = false, Message = $"Error: {ex.Message}" };
         }
     }
@@ -136,8 +150,13 @@ public class CartService : ICartService
     {
         try
         {
-            EnsureSessionHeader();
-            var response = await _httpClient.PutAsJsonAsync($"api/cart/items/{cartItemId}", request);
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"api/cart/items/{cartItemId}")
+            {
+                Content = JsonContent.Create(request)
+            };
+            AddSessionHeader(requestMessage);
+            
+            var response = await _httpClient.SendAsync(requestMessage);
             var result = await response.Content.ReadFromJsonAsync<CartResponse>();
             
             if (result?.Success == true)
@@ -149,6 +168,7 @@ public class CartService : ICartService
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"Error updating cart item: {ex.Message}");
             return new CartResponse { Success = false, Message = $"Error: {ex.Message}" };
         }
     }
@@ -157,8 +177,10 @@ public class CartService : ICartService
     {
         try
         {
-            EnsureSessionHeader();
-            var response = await _httpClient.DeleteAsync($"api/cart/items/{cartItemId}");
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Delete, $"api/cart/items/{cartItemId}");
+            AddSessionHeader(requestMessage);
+            
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {
@@ -168,8 +190,9 @@ public class CartService : ICartService
             
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Error removing cart item: {ex.Message}");
             return false;
         }
     }
@@ -178,8 +201,10 @@ public class CartService : ICartService
     {
         try
         {
-            EnsureSessionHeader();
-            var response = await _httpClient.DeleteAsync("api/cart");
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Delete, "api/cart");
+            AddSessionHeader(requestMessage);
+            
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {
@@ -189,8 +214,9 @@ public class CartService : ICartService
             
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Error clearing cart: {ex.Message}");
             return false;
         }
     }
@@ -202,11 +228,11 @@ public class CartService : ICartService
         return Guid.NewGuid().ToString();
     }
 
-    private void EnsureSessionHeader()
+    private void AddSessionHeader(HttpRequestMessage request)
     {
-        if (_sessionId != null && !_httpClient.DefaultRequestHeaders.Contains("X-Session-Id"))
+        if (_sessionId != null)
         {
-            _httpClient.DefaultRequestHeaders.Add("X-Session-Id", _sessionId);
+            request.Headers.Add("X-Session-Id", _sessionId);
         }
     }
 

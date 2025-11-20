@@ -86,16 +86,6 @@ public class CartService : ICartService
             };
         }
 
-        // Check max items limit
-        if (cart.Items.Count >= MaxCartItems)
-        {
-            return new AddToCartResponse
-            {
-                Success = false,
-                Message = $"Cart cannot contain more than {MaxCartItems} unique items"
-            };
-        }
-
         // Check if product already in cart
         var existingItem = cart.Items.FirstOrDefault(i => i.ProductId == request.ProductId);
         if (existingItem != null)
@@ -116,6 +106,16 @@ public class CartService : ICartService
         }
         else
         {
+            // Check max items limit only when adding a new item
+            if (cart.Items.Count >= MaxCartItems)
+            {
+                return new AddToCartResponse
+                {
+                    Success = false,
+                    Message = $"Cart cannot contain more than {MaxCartItems} unique items"
+                };
+            }
+
             // Add new item
             var cartItem = new CartItem
             {
@@ -284,20 +284,60 @@ public class CartService : ICartService
         // Merge guest cart items into user cart
         foreach (var guestItem in guestCart.Items)
         {
+            // Get current product to validate stock
+            var product = await _productService.GetProductByIdAsync(guestItem.ProductId);
+            if (product == null || product.Status != "Published")
+            {
+                _logger.LogWarning("Skipping product {ProductId} during cart merge - product unavailable", 
+                    guestItem.ProductId);
+                continue;
+            }
+
             var existingItem = userCart.Items.FirstOrDefault(i => i.ProductId == guestItem.ProductId);
             if (existingItem != null)
             {
-                // Combine quantities
-                existingItem.Quantity += guestItem.Quantity;
+                // Combine quantities, but cap at available stock
+                var combinedQuantity = existingItem.Quantity + guestItem.Quantity;
+                if (combinedQuantity > product.StockQuantity)
+                {
+                    combinedQuantity = product.StockQuantity;
+                    _logger.LogWarning(
+                        "Adjusted quantity for product {ProductId} during cart merge to available stock ({Stock})", 
+                        guestItem.ProductId, product.StockQuantity);
+                }
+                existingItem.Quantity = combinedQuantity;
                 existingItem.UpdatedAt = DateTime.UtcNow;
             }
             else if (userCart.Items.Count < MaxCartItems)
             {
-                // Add as new item
-                guestItem.CartId = userCart.Id;
-                userCart.Items.Add(guestItem);
+                // Add as new item - create new instance to avoid EF tracking issues
+                var quantityToAdd = Math.Min(guestItem.Quantity, product.StockQuantity);
+                if (quantityToAdd > 0)
+                {
+                    var newItem = new CartItem
+                    {
+                        Id = Guid.NewGuid(),
+                        CartId = userCart.Id,
+                        ProductId = guestItem.ProductId,
+                        StoreId = guestItem.StoreId,
+                        Quantity = quantityToAdd,
+                        PriceAtAdd = guestItem.PriceAtAdd,
+                        AddedAt = DateTime.UtcNow
+                    };
+                    userCart.Items.Add(newItem);
+                }
+                else
+                {
+                    _logger.LogWarning("Skipping product {ProductId} during cart merge - no stock available", 
+                        guestItem.ProductId);
+                }
             }
-            // If max items reached, skip remaining items
+            else
+            {
+                _logger.LogWarning("Max cart items ({MaxItems}) reached during merge - skipping remaining items", 
+                    MaxCartItems);
+                break;
+            }
         }
 
         // Mark guest cart as expired

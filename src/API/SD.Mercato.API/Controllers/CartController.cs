@@ -91,6 +91,7 @@ public class CartController : ControllerBase
 
         if (!result.Success)
         {
+            // TODO: Use strongly-typed error codes instead of string matching for better error handling
             if (result.Message?.Contains("not found") == true)
             {
                 return NotFound(result);
