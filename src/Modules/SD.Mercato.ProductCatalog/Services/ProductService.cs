@@ -15,7 +15,9 @@ public class ProductService : IProductService
     private readonly ProductCatalogDbContext _context;
     private readonly ILogger<ProductService> _logger;
 
-    public ProductService(ProductCatalogDbContext context, ILogger<ProductService> logger)
+    public ProductService(
+        ProductCatalogDbContext context,
+        ILogger<ProductService> logger)
     {
         _context = context;
         _logger = logger;
@@ -251,12 +253,11 @@ public class ProductService : IProductService
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        // TODO: Include store name - requires cross-module query or service call
         return products.Select(p => new PublicProductDto
         {
             Id = p.Id,
             StoreId = p.StoreId,
-            StoreName = "", // TODO: Fetch from Store service
+            StoreName = "", // Populated by API layer
             Title = p.Title,
             Description = p.Description,
             CategoryName = p.Category?.Name,
@@ -276,12 +277,11 @@ public class ProductService : IProductService
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        // TODO: Include store name - requires cross-module query or service call
         return products.Select(p => new PublicProductDto
         {
             Id = p.Id,
             StoreId = p.StoreId,
-            StoreName = "", // TODO: Fetch from Store service
+            StoreName = "", // Populated by API layer
             Title = p.Title,
             Description = p.Description,
             CategoryName = p.Category?.Name,
@@ -333,6 +333,115 @@ public class ProductService : IProductService
         }
 
         return !await query.AnyAsync();
+    }
+
+    public async Task<PaginatedProductsResponse> SearchProductsAsync(ProductSearchRequest request)
+    {
+        try
+        {
+            // Start with published products with stock
+            var query = _context.Products
+                .Include(p => p.Category)
+                .Where(p => p.Status == ProductStatus.Published && p.StockQuantity > 0);
+
+            // Apply search filter on title and description
+            if (!string.IsNullOrWhiteSpace(request.SearchQuery))
+            {
+                var searchLower = request.SearchQuery.ToLower();
+                query = query.Where(p => 
+                    p.Title.ToLower().Contains(searchLower) || 
+                    p.Description.ToLower().Contains(searchLower));
+            }
+
+            // Apply category filter
+            if (request.CategoryId.HasValue)
+            {
+                query = query.Where(p => p.CategoryId == request.CategoryId.Value);
+            }
+
+            // Apply price range filters
+            if (request.MinPrice.HasValue)
+            {
+                query = query.Where(p => p.Price >= request.MinPrice.Value);
+            }
+
+            if (request.MaxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= request.MaxPrice.Value);
+            }
+
+            // Apply store filter
+            if (request.StoreId.HasValue)
+            {
+                query = query.Where(p => p.StoreId == request.StoreId.Value);
+            }
+
+            // Apply sorting
+            query = ApplySorting(query, request.SortBy, request.SortDirection);
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var products = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            // Map to DTOs (store names populated by API layer)
+            var productDtos = products.Select(p => new PublicProductDto
+            {
+                Id = p.Id,
+                StoreId = p.StoreId,
+                StoreName = "", // Populated by API layer
+                Title = p.Title,
+                Description = p.Description,
+                CategoryName = p.Category?.Name,
+                Price = p.Price,
+                Currency = p.Currency,
+                StockQuantity = p.StockQuantity,
+                ImageUrls = DeserializeImageUrls(p.ImageUrls),
+                CreatedAt = p.CreatedAt
+            }).ToList();
+
+            return new PaginatedProductsResponse
+            {
+                Products = productDtos,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching products with request: {@Request}", request);
+            return new PaginatedProductsResponse
+            {
+                Products = new List<PublicProductDto>(),
+                TotalCount = 0,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+        }
+    }
+
+    private IQueryable<Product> ApplySorting(IQueryable<Product> query, string? sortBy, string? sortDirection)
+    {
+        var isDescending = sortDirection?.ToLower() == "desc";
+
+        return sortBy?.ToLower() switch
+        {
+            "price" => isDescending 
+                ? query.OrderByDescending(p => p.Price) 
+                : query.OrderBy(p => p.Price),
+            "title" => isDescending 
+                ? query.OrderByDescending(p => p.Title) 
+                : query.OrderBy(p => p.Title),
+            "created" => isDescending 
+                ? query.OrderByDescending(p => p.CreatedAt) 
+                : query.OrderBy(p => p.CreatedAt),
+            _ => query.OrderByDescending(p => p.CreatedAt) // Default sort by created date descending
+        };
     }
 
     private async Task<ProductDto> MapToDtoAsync(Product product)

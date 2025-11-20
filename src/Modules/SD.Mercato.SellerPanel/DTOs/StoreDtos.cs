@@ -141,3 +141,13 @@ public class PublicStoreProfileDto
     // public decimal? AverageRating { get; set; }
     // public int TotalReviews { get; set; }
 }
+
+/// <summary>
+/// Lightweight store DTO for listing purposes (filters, dropdowns).
+/// </summary>
+public class StoreListItemDto
+{
+    public Guid Id { get; set; }
+    public string StoreName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+}

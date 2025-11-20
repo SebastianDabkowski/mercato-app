@@ -264,6 +264,22 @@ public class StoreService : IStoreService
             .AnyAsync(s => s.OwnerUserId == userId);
     }
 
+    public async Task<List<StoreListItemDto>> GetActiveStoresAsync()
+    {
+        var stores = await _context.Stores
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.DisplayName)
+            .Select(s => new StoreListItemDto
+            {
+                Id = s.Id,
+                StoreName = s.StoreName,
+                DisplayName = s.DisplayName
+            })
+            .ToListAsync();
+
+        return stores;
+    }
+
     private static StoreDto MapToDto(Store store)
     {
         return new StoreDto

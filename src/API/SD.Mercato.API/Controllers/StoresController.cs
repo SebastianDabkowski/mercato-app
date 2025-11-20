@@ -176,4 +176,16 @@ public class StoresController : ControllerBase
 
         return Ok(store);
     }
+
+    /// <summary>
+    /// Get all active stores (for filters and dropdowns).
+    /// </summary>
+    [HttpGet("active")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<StoreListItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<StoreListItemDto>>> GetActiveStores()
+    {
+        var stores = await _storeService.GetActiveStoresAsync();
+        return Ok(stores);
+    }
 }
