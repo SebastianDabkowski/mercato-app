@@ -108,8 +108,9 @@ public class CartService : ICartService
             }
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"Error getting cart: {ex.Message}");
             return null;
         }
     }
