@@ -108,9 +108,18 @@ public class AuthService : IAuthService
             };
         }
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
+        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
         if (!result.Succeeded)
         {
+            if (result.IsLockedOut)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Account is locked due to multiple failed login attempts. Please try again later."
+                };
+            }
+            
             return new AuthResponse
             {
                 Success = false,
@@ -190,11 +199,23 @@ public class AuthService : IAuthService
         }
         else
         {
-            // Update external provider info if needed
-            if (user.ExternalProvider != request.Provider)
+            // User exists - verify this is not an account takeover attempt
+            // If user already has an external provider set, only allow login from the same provider
+            if (!string.IsNullOrEmpty(user.ExternalProvider) && user.ExternalProvider != request.Provider)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = $"This account is already linked to {user.ExternalProvider}. Please use {user.ExternalProvider} to sign in."
+                };
+            }
+            
+            // If user doesn't have an external provider yet (email/password account), link it
+            if (string.IsNullOrEmpty(user.ExternalProvider))
             {
                 user.ExternalProvider = request.Provider;
                 user.ExternalProviderId = request.ExternalProviderId;
+                user.IsEmailVerified = true; // External providers verify emails
                 await _userManager.UpdateAsync(user);
             }
         }

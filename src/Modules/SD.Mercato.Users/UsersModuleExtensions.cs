@@ -54,7 +54,7 @@ public static class UsersModuleExtensions
         var jwtSettings = configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
 
-        services.AddAuthentication(options =>
+        var authBuilder = services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -70,19 +70,34 @@ public static class UsersModuleExtensions
                 ValidIssuer = jwtSettings["Issuer"],
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.FromMinutes(5) // Allow 5 minutes clock skew for distributed environments
             };
-        })
-        .AddGoogle(options =>
-        {
-            options.ClientId = configuration["Authentication:Google:ClientId"] ?? string.Empty;
-            options.ClientSecret = configuration["Authentication:Google:ClientSecret"] ?? string.Empty;
-        })
-        .AddFacebook(options =>
-        {
-            options.AppId = configuration["Authentication:Facebook:AppId"] ?? string.Empty;
-            options.AppSecret = configuration["Authentication:Facebook:AppSecret"] ?? string.Empty;
         });
+
+        // Conditionally add OAuth providers only if credentials are configured
+        var googleClientId = configuration["Authentication:Google:ClientId"];
+        var googleClientSecret = configuration["Authentication:Google:ClientSecret"];
+        if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret) &&
+            googleClientId != "your-google-client-id" && googleClientSecret != "your-google-client-secret")
+        {
+            authBuilder.AddGoogle(options =>
+            {
+                options.ClientId = googleClientId;
+                options.ClientSecret = googleClientSecret;
+            });
+        }
+
+        var facebookAppId = configuration["Authentication:Facebook:AppId"];
+        var facebookAppSecret = configuration["Authentication:Facebook:AppSecret"];
+        if (!string.IsNullOrEmpty(facebookAppId) && !string.IsNullOrEmpty(facebookAppSecret) &&
+            facebookAppId != "your-facebook-app-id" && facebookAppSecret != "your-facebook-app-secret")
+        {
+            authBuilder.AddFacebook(options =>
+            {
+                options.AppId = facebookAppId;
+                options.AppSecret = facebookAppSecret;
+            });
+        }
 
         // Add Authorization
         services.AddAuthorization(options =>

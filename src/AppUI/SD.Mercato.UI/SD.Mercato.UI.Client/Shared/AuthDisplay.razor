@@ -53,7 +53,8 @@
         await CheckAuthStatus();
         
         // Set up a timer to periodically check auth status
-        refreshTimer = new System.Timers.Timer(5000); // Check every 5 seconds
+        // Using 60 seconds to reduce unnecessary polling while still detecting auth state changes
+        refreshTimer = new System.Timers.Timer(60000); // Check every 60 seconds
         refreshTimer.Elapsed += async (sender, e) => await InvokeAsync(async () =>
         {
             await CheckAuthStatus();
@@ -65,14 +66,7 @@
     private async Task CheckAuthStatus()
     {
         isAuthenticated = await AuthService.IsAuthenticatedAsync();
-        if (isAuthenticated)
-        {
-            currentUser = await AuthService.GetCurrentUserAsync();
-        }
-        else
-        {
-            currentUser = null;
-        }
+        currentUser = isAuthenticated ? await AuthService.GetCurrentUserAsync() : null;
     }
 
     private async Task HandleLogout()

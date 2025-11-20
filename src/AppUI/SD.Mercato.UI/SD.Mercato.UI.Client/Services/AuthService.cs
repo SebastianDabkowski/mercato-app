@@ -88,10 +88,12 @@ public class AuthService : IAuthService
         catch (HttpRequestException ex)
         {
             // Ignore HTTP errors during logout API call
+            Console.Error.WriteLine($"HTTP error during logout: {ex.Message}");
         }
         catch (TaskCanceledException ex)
         {
             // Ignore cancellation errors during logout API call
+            Console.Error.WriteLine($"Timeout during logout: {ex.Message}");
         }
         catch (Exception ex)
         {

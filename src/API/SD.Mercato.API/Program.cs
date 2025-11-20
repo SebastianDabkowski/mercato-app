@@ -12,6 +12,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddUsersModule(builder.Configuration);
 
 // Add CORS
+// TODO: Restrict CORS to specific origins (frontend URL) before production deployment
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
