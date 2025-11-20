@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SD.Mercato.Cart.Data;
 using SD.Mercato.Cart.DTOs;
 using SD.Mercato.Cart.Models;
+using SD.Mercato.ProductCatalog.Models;
 using SD.Mercato.ProductCatalog.Services;
 using SD.Mercato.SellerPanel.Services;
 
@@ -57,7 +58,7 @@ public class CartService : ICartService
             };
         }
 
-        if (product.Status != "Published")
+        if (product.Status != ProductStatus.Published)
         {
             return new AddToCartResponse
             {
@@ -286,7 +287,7 @@ public class CartService : ICartService
         {
             // Get current product to validate stock
             var product = await _productService.GetProductByIdAsync(guestItem.ProductId);
-            if (product == null || product.Status != "Published")
+            if (product == null || product.Status != ProductStatus.Published)
             {
                 _logger.LogWarning("Skipping product {ProductId} during cart merge - product unavailable", 
                     guestItem.ProductId);
@@ -447,7 +448,7 @@ public class CartService : ICartService
                 PriceAtAdd = item.PriceAtAdd,
                 CurrentPrice = product.Price,
                 AvailableStock = product.StockQuantity,
-                IsAvailable = product.Status == "Published" && product.StockQuantity >= item.Quantity,
+                IsAvailable = product.Status == ProductStatus.Published && product.StockQuantity >= item.Quantity,
                 AddedAt = item.AddedAt
             };
 
