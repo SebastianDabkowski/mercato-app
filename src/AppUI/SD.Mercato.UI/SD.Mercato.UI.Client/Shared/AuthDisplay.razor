@@ -1,0 +1,89 @@
+@using SD.Mercato.UI.Client.Models
+@using SD.Mercato.UI.Client.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="auth-display">
+    @if (isAuthenticated && currentUser != null)
+    {
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle me-1"></i>
+                @currentUser.FirstName @currentUser.LastName
+                <span class="badge bg-secondary ms-1">@currentUser.Role</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
+                <li><a class="dropdown-item" href="/profile">My Profile</a></li>
+                @if (currentUser.Role == "Seller")
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/seller/dashboard">Seller Dashboard</a></li>
+                    <li><a class="dropdown-item" href="/seller/products">My Products</a></li>
+                    <li><a class="dropdown-item" href="/seller/orders">My Orders</a></li>
+                }
+                @if (currentUser.Role == "Administrator")
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/admin/dashboard">Admin Dashboard</a></li>
+                    <li><a class="dropdown-item" href="/admin/users">Manage Users</a></li>
+                    <li><a class="dropdown-item" href="/admin/reports">Reports</a></li>
+                }
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" @onclick="HandleLogout" style="cursor: pointer;">Logout</a></li>
+            </ul>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex gap-2">
+            <a href="/login" class="btn btn-outline-primary">Login</a>
+            <a href="/register" class="btn btn-primary">Register</a>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isAuthenticated = false;
+    private UserDto? currentUser;
+    private System.Timers.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthStatus();
+        
+        // Set up a timer to periodically check auth status
+        refreshTimer = new System.Timers.Timer(5000); // Check every 5 seconds
+        refreshTimer.Elapsed += async (sender, e) => await InvokeAsync(async () =>
+        {
+            await CheckAuthStatus();
+            StateHasChanged();
+        });
+        refreshTimer.Start();
+    }
+
+    private async Task CheckAuthStatus()
+    {
+        isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (isAuthenticated)
+        {
+            currentUser = await AuthService.GetCurrentUserAsync();
+        }
+        else
+        {
+            currentUser = null;
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Stop();
+        refreshTimer?.Dispose();
+    }
+}

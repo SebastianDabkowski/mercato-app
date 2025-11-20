@@ -1,0 +1,115 @@
+@page "/login"
+@using SD.Mercato.UI.Client.Models
+@using SD.Mercato.UI.Client.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login - Mercato</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Login to Mercato</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <EditForm Model="@loginRequest" OnValidSubmit="@HandleLogin">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="loginRequest.Email" placeholder="Enter your email" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="loginRequest.Password" placeholder="Enter your password" />
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                }
+                                Login
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <hr />
+
+                    <div class="text-center">
+                        <p>Don't have an account? <a href="/register">Register here</a></p>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-grid gap-2">
+                        <p class="text-center text-muted">Or sign in with:</p>
+                        <button class="btn btn-outline-danger" @onclick="HandleGoogleLogin" disabled="@isLoading">
+                            <i class="bi bi-google me-2"></i> Sign in with Google
+                        </button>
+                        <button class="btn btn-outline-primary" @onclick="HandleFacebookLogin" disabled="@isLoading">
+                            <i class="bi bi-facebook me-2"></i> Sign in with Facebook
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginRequest = new();
+    private string? errorMessage;
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(loginRequest);
+
+            if (result.Success)
+            {
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = result.Message ?? "Login failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSocialLogin(string provider)
+    {
+        // TODO: Implement social login flow
+        // This requires redirecting to the OAuth provider and handling the callback
+        errorMessage = $"{provider} login is not yet implemented in this demo.";
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleGoogleLogin() => await HandleSocialLogin("Google");
+    private async Task HandleFacebookLogin() => await HandleSocialLogin("Facebook");
+}
