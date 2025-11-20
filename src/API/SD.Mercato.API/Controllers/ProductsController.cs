@@ -194,6 +194,12 @@ public class ProductsController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        // Validate MinPrice vs MaxPrice relationship
+        if (request.MinPrice.HasValue && request.MaxPrice.HasValue && request.MinPrice > request.MaxPrice)
+        {
+            ModelState.AddModelError("MinPrice", "Minimum price cannot be greater than maximum price");
+            return BadRequest(ModelState);
+        }
         var result = await _productService.SearchProductsAsync(request);
         await PopulateStoreNamesAsync(result.Products);
         return Ok(result);
