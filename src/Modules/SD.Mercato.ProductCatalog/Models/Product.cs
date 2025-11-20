@@ -100,6 +100,13 @@ public class Product
     public decimal Price { get; set; }
 
     /// <summary>
+    /// Currency code (e.g., USD, EUR, GBP). Defaults to USD.
+    /// </summary>
+    [Required]
+    [MaxLength(3)]
+    public string Currency { get; set; } = "USD";
+
+    /// <summary>
     /// Stock quantity available.
     /// </summary>
     [Required]

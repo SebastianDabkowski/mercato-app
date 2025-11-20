@@ -170,6 +170,17 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all published products from all stores (global catalog for buyers).
+    /// </summary>
+    [HttpGet("catalog")]
+    [ProducesResponseType(typeof(List<PublicProductDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<PublicProductDto>>> GetCatalog()
+    {
+        var products = await _productService.GetAllPublishedProductsAsync();
+        return Ok(products);
+    }
+
+    /// <summary>
     /// Delete a product (seller only).
     /// </summary>
     [HttpDelete("{productId:guid}")]

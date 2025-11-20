@@ -33,6 +33,11 @@ public interface IProductService
     Task<List<PublicProductDto>> GetPublishedProductsByStoreIdAsync(Guid storeId);
 
     /// <summary>
+    /// Get all published products from all stores (for global catalog).
+    /// </summary>
+    Task<List<PublicProductDto>> GetAllPublishedProductsAsync();
+
+    /// <summary>
     /// Delete a product.
     /// </summary>
     Task<bool> DeleteProductAsync(Guid productId, Guid storeId);

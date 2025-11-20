@@ -1,0 +1,91 @@
+@page "/catalog"
+@using SD.Mercato.UI.Client.Services
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+
+<PageTitle>Product Catalog</PageTitle>
+
+<div class="container mt-4">
+    <h3>Product Catalog</h3>
+    <p class="text-muted">Browse products from all sellers</p>
+
+    @if (loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (products.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No products available at the moment. Check back soon!
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var product in products)
+            {
+                <div class="col-md-4 col-lg-3 mb-4">
+                    <div class="card h-100">
+                        @if (product.ImageUrls.Any())
+                        {
+                            <img src="@product.ImageUrls.First()" class="card-img-top" alt="@product.Title" style="height: 200px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-image" style="font-size: 3rem;"></i>
+                            </div>
+                        }
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">@product.Title</h5>
+                            @if (!string.IsNullOrEmpty(product.CategoryName))
+                            {
+                                <p class="text-muted small mb-2">
+                                    <i class="bi bi-tag"></i> @product.CategoryName
+                                </p>
+                            }
+                            <p class="card-text text-truncate" style="max-height: 3rem;">
+                                @product.Description
+                            </p>
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="h5 mb-0 text-primary">@product.Price.ToString("C") @product.Currency</span>
+                                    <small class="text-muted">Stock: @product.StockQuantity</small>
+                                </div>
+                                <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewProduct(product.Id)">
+                                    <i class="bi bi-eye"></i> View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<PublicProductDto> products = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCatalog();
+    }
+
+    private async Task LoadCatalog()
+    {
+        loading = true;
+        products = await ProductService.GetCatalogAsync();
+        loading = false;
+    }
+
+    private void ViewProduct(Guid productId)
+    {
+        Navigation.NavigateTo($"/catalog/{productId}");
+    }
+}

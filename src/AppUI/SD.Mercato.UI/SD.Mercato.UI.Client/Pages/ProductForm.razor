@@ -1,0 +1,367 @@
+@page "/seller/products/create"
+@page "/seller/products/edit/{ProductId:guid}"
+@using SD.Mercato.UI.Client.Services
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>@(IsEditMode ? "Edit Product" : "Create Product")</PageTitle>
+
+<div class="container mt-4">
+    <h3>@(IsEditMode ? "Edit Product" : "Create Product")</h3>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Product Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">SKU <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="model.SKU" class="form-control" placeholder="e.g., PROD-001" disabled="@IsEditMode" />
+                                <ValidationMessage For="@(() => model.SKU)" />
+                                <small class="form-text text-muted">Unique product identifier (cannot be changed after creation)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Title <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="model.Title" class="form-control" placeholder="Product name" />
+                                <ValidationMessage For="@(() => model.Title)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Description <span class="text-danger">*</span></label>
+                                <InputTextArea @bind-Value="model.Description" class="form-control" rows="5" placeholder="Detailed product description" />
+                                <ValidationMessage For="@(() => model.Description)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                <InputSelect @bind-Value="model.CategoryId" class="form-select">
+                                    <option value="">-- Select Category --</option>
+                                    @foreach (var category in categories)
+                                    {
+                                        <option value="@category.Id">@category.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.CategoryId)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Pricing & Inventory</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label">Price <span class="text-danger">*</span></label>
+                                    <InputNumber @bind-Value="model.Price" class="form-control" step="0.01" />
+                                    <ValidationMessage For="@(() => model.Price)" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Currency <span class="text-danger">*</span></label>
+                                    <InputSelect @bind-Value="model.Currency" class="form-select">
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => model.Currency)" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Stock Quantity <span class="text-danger">*</span></label>
+                                <InputNumber @bind-Value="model.StockQuantity" class="form-control" />
+                                <ValidationMessage For="@(() => model.StockQuantity)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Shipping Details (Optional)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Weight (grams)</label>
+                                    <InputNumber @bind-Value="model.Weight" class="form-control" />
+                                    <ValidationMessage For="@(() => model.Weight)" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Length (cm)</label>
+                                    <InputNumber @bind-Value="model.Length" class="form-control" />
+                                    <ValidationMessage For="@(() => model.Length)" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Width (cm)</label>
+                                    <InputNumber @bind-Value="model.Width" class="form-control" />
+                                    <ValidationMessage For="@(() => model.Width)" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Height (cm)</label>
+                                    <InputNumber @bind-Value="model.Height" class="form-control" />
+                                    <ValidationMessage For="@(() => model.Height)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Product Status</label>
+                                <InputSelect @bind-Value="model.Status" class="form-select">
+                                    <option value="Draft">Draft</option>
+                                    <option value="Published">Published</option>
+                                    <option value="Archived">Archived</option>
+                                </InputSelect>
+                                <small class="form-text text-muted">
+                                    Only published products are visible to buyers
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Images</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Image URL</label>
+                                <InputText @bind-Value="imageUrl" class="form-control" placeholder="https://example.com/image.jpg" />
+                                <button type="button" class="btn btn-sm btn-secondary mt-2" @onclick="AddImageUrl">
+                                    <i class="bi bi-plus"></i> Add Image
+                                </button>
+                            </div>
+
+                            @if (model.ImageUrls != null && model.ImageUrls.Any())
+                            {
+                                <div class="mt-3">
+                                    <label class="form-label">Current Images:</label>
+                                    @foreach (var url in model.ImageUrls)
+                                    {
+                                        <div class="d-flex align-items-center mb-2">
+                                            <img src="@url" alt="Product" class="img-thumbnail me-2" style="width: 60px; height: 60px; object-fit: cover;" />
+                                            <button type="button" class="btn btn-sm btn-danger" @onclick="() => RemoveImageUrl(url)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <small class="form-text text-muted">
+                                Published products must have at least one image
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary" disabled="@submitting">
+                    @if (submitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    @(IsEditMode ? "Update Product" : "Create Product")
+                </button>
+            </div>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid? ProductId { get; set; }
+
+    private bool IsEditMode => ProductId.HasValue;
+    private ProductFormModel model = new();
+    private List<CategoryDto> categories = new();
+    private string imageUrl = string.Empty;
+    private bool loading = true;
+    private bool submitting = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+
+        if (IsEditMode && ProductId.HasValue)
+        {
+            await LoadProduct(ProductId.Value);
+        }
+
+        loading = false;
+    }
+
+    private async Task LoadCategories()
+    {
+        categories = await CategoryService.GetActiveCategoriesAsync();
+    }
+
+    private async Task LoadProduct(Guid productId)
+    {
+        var product = await ProductService.GetProductByIdAsync(productId);
+        if (product != null)
+        {
+            model = new ProductFormModel
+            {
+                SKU = product.SKU,
+                Title = product.Title,
+                Description = product.Description,
+                CategoryId = product.CategoryId,
+                Price = product.Price,
+                Currency = product.Currency,
+                StockQuantity = product.StockQuantity,
+                Weight = product.Weight,
+                Length = product.Length,
+                Width = product.Width,
+                Height = product.Height,
+                ImageUrls = product.ImageUrls,
+                Status = product.Status
+            };
+        }
+    }
+
+    private void AddImageUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(imageUrl))
+        {
+            model.ImageUrls ??= new List<string>();
+            model.ImageUrls.Add(imageUrl);
+            imageUrl = string.Empty;
+        }
+    }
+
+    private void RemoveImageUrl(string url)
+    {
+        model.ImageUrls?.Remove(url);
+    }
+
+    private async Task HandleSubmit()
+    {
+        submitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            ProductResponse result;
+
+            if (IsEditMode && ProductId.HasValue)
+            {
+                var updateRequest = new UpdateProductRequest
+                {
+                    Title = model.Title,
+                    Description = model.Description,
+                    CategoryId = model.CategoryId,
+                    Price = model.Price,
+                    Currency = model.Currency,
+                    StockQuantity = model.StockQuantity,
+                    Weight = model.Weight,
+                    Length = model.Length,
+                    Width = model.Width,
+                    Height = model.Height,
+                    ImageUrls = model.ImageUrls,
+                    Status = model.Status
+                };
+
+                result = await ProductService.UpdateProductAsync(ProductId.Value, updateRequest);
+            }
+            else
+            {
+                var createRequest = new CreateProductRequest
+                {
+                    SKU = model.SKU,
+                    Title = model.Title,
+                    Description = model.Description,
+                    CategoryId = model.CategoryId,
+                    Price = model.Price,
+                    Currency = model.Currency,
+                    StockQuantity = model.StockQuantity,
+                    Weight = model.Weight,
+                    Length = model.Length,
+                    Width = model.Width,
+                    Height = model.Height,
+                    ImageUrls = model.ImageUrls,
+                    Status = model.Status
+                };
+
+                result = await ProductService.CreateProductAsync(createRequest);
+            }
+
+            if (result.Success)
+            {
+                Navigation.NavigateTo("/seller/products");
+            }
+            else
+            {
+                errorMessage = result.Message ?? "An error occurred while saving the product.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/seller/products");
+    }
+
+    private class ProductFormModel
+    {
+        public string SKU { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public Guid CategoryId { get; set; }
+        public decimal Price { get; set; }
+        public string Currency { get; set; } = "USD";
+        public int StockQuantity { get; set; }
+        public decimal? Weight { get; set; }
+        public decimal? Length { get; set; }
+        public decimal? Width { get; set; }
+        public decimal? Height { get; set; }
+        public List<string>? ImageUrls { get; set; }
+        public string Status { get; set; } = "Draft";
+    }
+}
