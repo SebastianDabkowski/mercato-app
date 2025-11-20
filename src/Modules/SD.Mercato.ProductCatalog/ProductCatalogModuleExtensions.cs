@@ -39,9 +39,6 @@ public static class ProductCatalogModuleExtensions
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ProductCatalogDbContext>();
 
-        // Ensure database is created
-        await context.Database.EnsureCreatedAsync();
-
         // Check if categories already exist
         if (await context.Categories.AnyAsync())
         {
