@@ -101,14 +101,28 @@ public class ProductService : IProductService
                 Product = await MapToDtoAsync(product)
             };
         }
-        catch (Exception ex)
+        catch (DbUpdateException dbEx)
         {
-            _logger.LogError(ex, "Error creating product for store {StoreId}", storeId);
+            _logger.LogError(dbEx, "Database update error while creating product for store {StoreId}", storeId);
             return new ProductResponse
             {
                 Success = false,
-                Message = "An error occurred while creating the product. Please try again."
+                Message = "A database error occurred while creating the product. Please check your input and try again."
             };
+        }
+        catch (ArgumentException argEx)
+        {
+            _logger.LogError(argEx, "Invalid argument while creating product for store {StoreId}", storeId);
+            return new ProductResponse
+            {
+                Success = false,
+                Message = "Invalid input provided. Please check your data and try again."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error creating product for store {StoreId}", storeId);
+            throw; // Let unexpected exceptions propagate
         }
     }
 
