@@ -1,0 +1,6 @@
+@SD.Mercato.API_HostAddress = http://localhost:5201
+
+GET {{SD.Mercato.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
