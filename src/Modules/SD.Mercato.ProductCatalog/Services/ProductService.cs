@@ -280,9 +280,14 @@ public class ProductService : IProductService
             _logger.LogInformation("Product deleted: {ProductId}", productId);
             return true;
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Error deleting product {ProductId}", productId);
+            _logger.LogError(ex, "Database update error deleting product {ProductId}", productId);
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation error deleting product {ProductId}", productId);
             return false;
         }
     }
