@@ -193,12 +193,12 @@ Seller Receives: $110 - $15 - $3.49 = $91.51
 
 Comprehensive documentation is available in `.github/copilot/`:
 
-- **[Quick Start Guide](.github/copilot/quickstart.md)** - Start here for project overview and documentation roadmap
-- **[Business Domain Documentation](.github/copilot/business-domain.md)** - Core business flows, entities, rules, and MVP scope
-- **[Domain Model Reference](.github/copilot/domain-model.md)** - Entity relationships, state machines, and data flows
-- **[Implementation Status](.github/copilot/implementation-status.md)** - Feature tracking and progress monitoring
-- **[Product Requirements (PRD)](.github/copilot/prd.md)** - Product requirements and feature specifications
-- **[Architecture Overview](.github/copilot/architecture.md)** - Technical architecture and design decisions
+- **[Quick Start Guide](copilot/quickstart.md)** - Start here for project overview and documentation roadmap
+- **[Business Domain Documentation](copilot/business-domain.md)** - Core business flows, entities, rules, and MVP scope
+- **[Domain Model Reference](copilot/domain-model.md)** - Entity relationships, state machines, and data flows
+- **[Implementation Status](copilot/implementation-status.md)** - Feature tracking and progress monitoring
+- **[Product Requirements (PRD)](copilot/prd.md)** - Product requirements and feature specifications
+- **[Architecture Overview](copilot/architecture.md)** - Technical architecture and design decisions
 
 **Always refer to these documents when:**
 - Implementing new features
