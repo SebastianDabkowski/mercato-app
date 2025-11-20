@@ -63,7 +63,7 @@ src/
 - Follow standard .NET naming conventions (PascalCase for public members, camelCase for private)
 - Prefer `async/await` for I/O operations
 - Use `record` types for immutable DTOs and value objects
-- Use `required` keyword for mandatory properties in C# 11+
+- Use `required` keyword for mandatory properties in C# 13
 
 ### Code Organization
 - One public class per file
