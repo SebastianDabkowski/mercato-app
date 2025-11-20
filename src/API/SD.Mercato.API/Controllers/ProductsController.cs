@@ -54,7 +54,7 @@ public class ProductsController : ControllerBase
         var store = await _storeService.GetStoreByOwnerIdAsync(userId);
         if (store == null)
         {
-            return Forbid();
+            return StatusCode(403, new { message = "You must create a store before adding products" });
         }
 
         var result = await _productService.CreateProductAsync(store.Id, request);
