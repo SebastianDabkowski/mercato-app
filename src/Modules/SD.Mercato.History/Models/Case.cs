@@ -141,4 +141,9 @@ public static class CaseStatuses
     public const string Accepted = "Accepted";
     public const string Rejected = "Rejected";
     public const string Resolved = "Resolved";
+
+    /// <summary>
+    /// Gets all valid case status values.
+    /// </summary>
+    public static readonly string[] ValidStatuses = new[] { New, InReview, Accepted, Rejected, Resolved };
 }

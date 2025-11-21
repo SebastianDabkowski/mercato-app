@@ -205,10 +205,9 @@ public class CaseService : ICaseService
         }
 
         // Validate status transition
-        var validStatuses = new[] { CaseStatuses.New, CaseStatuses.InReview, CaseStatuses.Accepted, CaseStatuses.Rejected, CaseStatuses.Resolved };
-        if (!validStatuses.Contains(request.Status))
+        if (!CaseStatuses.ValidStatuses.Contains(request.Status))
         {
-            return (false, $"Invalid status. Valid values are: {string.Join(", ", validStatuses)}");
+            return (false, $"Invalid status. Valid values are: {string.Join(", ", CaseStatuses.ValidStatuses)}");
         }
 
         // TODO: Should we enforce status workflow? (e.g., New -> In Review -> Accepted/Rejected -> Resolved)

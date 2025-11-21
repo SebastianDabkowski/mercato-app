@@ -113,13 +113,12 @@ public class CasesController : ControllerBase
             return BadRequest(new { message = "Invalid pagination parameters" });
         }
 
-        // Validate status
+        // Validate status filter
         if (!string.IsNullOrEmpty(status))
         {
-            var validStatuses = new[] { CaseStatuses.New, CaseStatuses.InReview, CaseStatuses.Accepted, CaseStatuses.Rejected, CaseStatuses.Resolved };
-            if (!validStatuses.Contains(status))
+            if (!CaseStatuses.ValidStatuses.Contains(status))
             {
-                return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", validStatuses)}" });
+                return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", CaseStatuses.ValidStatuses)}" });
             }
         }
 
@@ -149,25 +148,18 @@ public class CasesController : ControllerBase
 
     /// <summary>
     /// Get all cases for a seller's store.
+    /// TODO: This endpoint requires seller-to-store mapping which is not yet implemented.
+    /// Use GET /api/cases/seller/{storeId} instead, providing the storeId explicitly.
     /// </summary>
     [HttpGet("seller")]
     [Authorize(Roles = "Seller")]
-    [ProducesResponseType(typeof(CaseListResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<CaseListResponseDto>> GetSellerCases(
-        [FromQuery] string? status = null,
-        [FromQuery] string? caseType = null,
-        [FromQuery] DateTime? fromDate = null,
-        [FromQuery] DateTime? toDate = null,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+    [ProducesResponseType(StatusCodes.Status501NotImplemented)]
+    public IActionResult GetSellerCases()
     {
-        // TODO: Get seller's storeId from authenticated user/claims
-        // For now, we need a way to map seller userId to storeId
-        // This should be done via a store lookup service
-
-        return BadRequest(new { message = "Seller store lookup not yet implemented. Use /api/cases/seller/{storeId} instead." });
+        return StatusCode(StatusCodes.Status501NotImplemented, new 
+        { 
+            message = "Seller store lookup not yet implemented. Use /api/cases/seller/{storeId} instead." 
+        });
     }
 
     /// <summary>
@@ -253,9 +245,12 @@ public class CasesController : ControllerBase
     [ProducesResponseType(typeof(CaseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CaseDto>> GetCaseById(Guid id)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized(new { message = "User not authenticated" });
@@ -267,8 +262,15 @@ public class CasesController : ControllerBase
             return NotFound(new { message = "Case not found" });
         }
 
-        // TODO: Verify authorization - buyer should only see their cases, seller their store's cases, admin all
-        // For MVP, we allow any authenticated user to view any case
+        // Authorization check: buyer should only see their cases, seller their store's cases, admin all
+        var isAuthorized = userRole == "Administrator" || 
+                          (userRole == "Buyer" && caseDto.BuyerId == userId) ||
+                          (userRole == "Seller"); // TODO: Verify seller owns the store (caseDto.StoreId)
+
+        if (!isAuthorized)
+        {
+            return Forbid();
+        }
 
         return Ok(caseDto);
     }
