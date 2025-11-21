@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\Modules\SD.Mercato.ProductCatalog\SD.Mercato.ProductCatalog.csproj" />
     <ProjectReference Include="..\..\Modules\SD.Mercato.Cart\SD.Mercato.Cart.csproj" />
     <ProjectReference Include="..\..\Modules\SD.Mercato.History\SD.Mercato.History.csproj" />
+    <ProjectReference Include="..\..\Modules\SD.Mercato.Payments\SD.Mercato.Payments.csproj" />
   </ItemGroup>
 
 </Project>
