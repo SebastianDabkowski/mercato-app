@@ -23,9 +23,29 @@ public interface IOrderService
     Task<List<OrderDto>> GetUserOrdersAsync(string userId);
 
     /// <summary>
+    /// Get orders for a user with filtering and pagination.
+    /// </summary>
+    Task<OrderListResponse> GetUserOrdersAsync(string userId, OrderFilterRequest filter);
+
+    /// <summary>
     /// Get sub-orders for a seller's store.
     /// </summary>
     Task<List<SubOrderDto>> GetStoreSubOrdersAsync(Guid storeId);
+
+    /// <summary>
+    /// Get sub-orders for a seller's store with filtering and pagination.
+    /// </summary>
+    Task<SubOrderListResponse> GetStoreSubOrdersAsync(Guid storeId, SubOrderFilterRequest filter);
+
+    /// <summary>
+    /// Get sub-order details by ID (for seller).
+    /// </summary>
+    Task<SubOrderDto?> GetSubOrderByIdAsync(Guid subOrderId, Guid storeId);
+
+    /// <summary>
+    /// Update sub-order status with workflow validation.
+    /// </summary>
+    Task<(bool Success, string? ErrorMessage)> UpdateSubOrderStatusAsync(Guid subOrderId, Guid storeId, UpdateSubOrderStatusRequest request);
 
     /// <summary>
     /// Update payment status after payment gateway callback.

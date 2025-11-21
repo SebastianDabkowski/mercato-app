@@ -1,0 +1,356 @@
+@page "/seller/orders/{SubOrderId:guid}"
+@using SD.Mercato.UI.Client.Services
+@inject ISellerOrderService SellerOrderService
+@inject NavigationManager Navigation
+@inject IAuthService AuthService
+
+<PageTitle>Order Details - Seller Panel - Mercato</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (subOrder == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Order Not Found</h4>
+            <p>The order you're looking for doesn't exist or you don't have permission to view it.</p>
+            <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/seller/orders"))">
+                Back to Orders
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Order #@subOrder.SubOrderNumber</h1>
+                <p class="text-muted mb-0">
+                    Placed on @subOrder.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                </p>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/seller/orders"))">
+                    <i class="bi bi-arrow-left"></i> Back to Orders
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="card mb-3 border-@GetStatusBorderClass(subOrder.Status)">
+            <div class="card-header bg-@GetStatusBadgeClass(subOrder.Status) text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-circle-fill me-2"></i>
+                    Current Status: @subOrder.Status
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(statusUpdateError))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        @statusUpdateError
+                        <button type="button" class="btn-close" @onclick="@(() => statusUpdateError = null)"></button>
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(statusUpdateSuccess))
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        @statusUpdateSuccess
+                        <button type="button" class="btn-close" @onclick="@(() => statusUpdateSuccess = null)"></button>
+                    </div>
+                }
+
+                <h6>Update Order Status</h6>
+                <div class="row g-3">
+                    @if (subOrder.Status == "Processing")
+                    {
+                        <div class="col-md-6">
+                            <label for="trackingNumber" class="form-label">Tracking Number (recommended)</label>
+                            <input type="text" id="trackingNumber" class="form-control" @bind="trackingNumber" 
+                                   placeholder="Enter tracking number" />
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" @onclick="@(() => UpdateStatus("Shipped"))" 
+                                    disabled="@isUpdatingStatus">
+                                @if (isUpdatingStatus)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
+                                        <span class="visually-hidden">Updating...</span>
+                                    </span>
+                                }
+                                <i class="bi bi-box-seam me-2"></i> Mark as Shipped
+                            </button>
+                        </div>
+                    }
+                    
+                    @if (subOrder.Status == "Shipped")
+                    {
+                        <div class="col-md-6">
+                            <button class="btn btn-success w-100" @onclick="@(() => UpdateStatus("Delivered"))" 
+                                    disabled="@isUpdatingStatus">
+                                @if (isUpdatingStatus)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
+                                        <span class="visually-hidden">Updating...</span>
+                                    </span>
+                                }
+                                <i class="bi bi-check-circle me-2"></i> Mark as Delivered
+                            </button>
+                        </div>
+                    }
+                    
+                    @if (subOrder.Status == "Processing" || subOrder.Status == "Shipped")
+                    {
+                        <div class="col-md-6">
+                            <button class="btn btn-danger w-100" @onclick="@(() => UpdateStatus("Cancelled"))" 
+                                    disabled="@isUpdatingStatus">
+                                @if (isUpdatingStatus)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
+                                        <span class="visually-hidden">Updating...</span>
+                                    </span>
+                                }
+                                <i class="bi bi-x-circle me-2"></i> Cancel Order
+                            </button>
+                        </div>
+                    }
+                    
+                    @if (subOrder.Status == "Delivered" || subOrder.Status == "Cancelled")
+                    {
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                This order is in a final state and cannot be modified.
+                            </div>
+                        </div>
+                    }
+                </div>
+                
+                @if (subOrder.ShippedAt.HasValue)
+                {
+                    <div class="mt-3">
+                        <strong>Shipped on:</strong> @subOrder.ShippedAt.Value.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
+                {
+                    <div class="mt-2">
+                        <strong>Tracking Number:</strong> <code>@subOrder.TrackingNumber</code>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Order Items -->
+            <div class="col-md-8">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Items</h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var item in subOrder.Items)
+                        {
+                            <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
+                                @if (!string.IsNullOrEmpty(item.ProductImageUrl))
+                                {
+                                    <img src="@item.ProductImageUrl" alt="@item.ProductTitle" 
+                                         class="me-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" />
+                                }
+                                else
+                                {
+                                    <div class="me-3 bg-light d-flex align-items-center justify-content-center" 
+                                         style="width: 80px; height: 80px; border-radius: 8px;">
+                                        <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
+                                    </div>
+                                }
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">@item.ProductTitle</h6>
+                                    <small class="text-muted d-block">SKU: @item.ProductSku</small>
+                                    <small class="text-muted">Quantity: @item.Quantity × $@item.UnitPrice.ToString("F2")</small>
+                                </div>
+                                <div class="text-end">
+                                    <strong>$@item.Subtotal.ToString("F2")</strong>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Delivery Address</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>@subOrder.DeliveryRecipientName</strong></p>
+                        <p class="mb-0">
+                            @subOrder.DeliveryAddressLine1<br />
+                            @if (!string.IsNullOrEmpty(subOrder.DeliveryAddressLine2))
+                            {
+                                @subOrder.DeliveryAddressLine2<br />
+                            }
+                            @subOrder.DeliveryCity, @subOrder.DeliveryState @subOrder.DeliveryPostalCode<br />
+                            @subOrder.DeliveryCountry
+                        </p>
+                        
+                        @if (!string.IsNullOrEmpty(subOrder.BuyerEmail) || !string.IsNullOrEmpty(subOrder.BuyerPhone))
+                        {
+                            <hr />
+                            <p class="mb-0 small text-muted">
+                                @if (!string.IsNullOrEmpty(subOrder.BuyerEmail))
+                                {
+                                    <span class="d-block"><i class="bi bi-envelope me-2"></i>@subOrder.BuyerEmail</span>
+                                }
+                                @if (!string.IsNullOrEmpty(subOrder.BuyerPhone))
+                                {
+                                    <span class="d-block"><i class="bi bi-telephone me-2"></i>@subOrder.BuyerPhone</span>
+                                }
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-md-4">
+                <div class="card sticky-top" style="top: 20px;">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Products Subtotal:</span>
+                            <span>$@subOrder.ProductsTotal.ToString("F2")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping (@subOrder.ShippingMethod):</span>
+                            <span>$@subOrder.ShippingCost.ToString("F2")</span>
+                        </div>
+                        <hr />
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total:</strong>
+                            <strong class="text-primary fs-5">$@subOrder.TotalAmount.ToString("F2")</strong>
+                        </div>
+                        
+                        <div class="small text-muted">
+                            <p class="mb-1"><strong>Related Order:</strong></p>
+                            <p class="mb-0">@subOrder.OrderNumber</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid SubOrderId { get; set; }
+
+    private SubOrderDto? subOrder;
+    private bool isLoading = true;
+    private bool isUpdatingStatus = false;
+    
+    private string? trackingNumber;
+    private string? statusUpdateError;
+    private string? statusUpdateSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrder();
+    }
+
+    private async Task LoadOrder()
+    {
+        isLoading = true;
+        subOrder = await SellerOrderService.GetSubOrderByIdAsync(SubOrderId);
+        
+        if (subOrder != null && !string.IsNullOrEmpty(subOrder.TrackingNumber))
+        {
+            trackingNumber = subOrder.TrackingNumber;
+        }
+        
+        isLoading = false;
+    }
+
+    private async Task UpdateStatus(string newStatus)
+    {
+        statusUpdateError = null;
+        statusUpdateSuccess = null;
+        isUpdatingStatus = true;
+
+        try
+        {
+            var request = new UpdateSubOrderStatusRequest
+            {
+                Status = newStatus,
+                TrackingNumber = newStatus == "Shipped" ? trackingNumber : null
+            };
+
+            var result = await SellerOrderService.UpdateSubOrderStatusAsync(SubOrderId, request);
+            
+            isUpdatingStatus = false;
+
+            if (result != null)
+            {
+                subOrder = result;
+                statusUpdateSuccess = $"Order status successfully updated to {newStatus}.";
+                
+                // Clear tracking number field after successful shipment
+                if (newStatus == "Shipped")
+                {
+                    trackingNumber = result.TrackingNumber;
+                }
+            }
+            else
+            {
+                statusUpdateError = "Failed to update order status. Please try again.";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            isUpdatingStatus = false;
+            statusUpdateError = !string.IsNullOrWhiteSpace(ex.Message)
+                ? ex.Message
+                : "Failed to update order status. Please try again.";
+        }
+        catch (Exception ex)
+        {
+            isUpdatingStatus = false;
+            statusUpdateError = "An unexpected error occurred. Please try again.";
+            Console.WriteLine($"Error updating status: {ex.Message}");
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Processing" => "warning",
+            "Shipped" => "info",
+            "Delivered" => "success",
+            "Cancelled" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private string GetStatusBorderClass(string status)
+    {
+        return status switch
+        {
+            "Processing" => "warning",
+            "Shipped" => "info",
+            "Delivered" => "success",
+            "Cancelled" => "danger",
+            _ => "secondary"
+        };
+    }
+}

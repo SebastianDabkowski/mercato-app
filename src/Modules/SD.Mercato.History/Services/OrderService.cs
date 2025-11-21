@@ -237,6 +237,50 @@ public class OrderService : IOrderService
         return orders.Select(MapToOrderDto).ToList();
     }
 
+    public async Task<OrderListResponse> GetUserOrdersAsync(string userId, OrderFilterRequest filter)
+    {
+        var query = _dbContext.Orders
+            .Include(o => o.SubOrders)
+            .ThenInclude(s => s.Items)
+            .Where(o => o.UserId == userId);
+
+        // Apply filters
+        if (!string.IsNullOrEmpty(filter.Status))
+        {
+            query = query.Where(o => o.Status == filter.Status);
+        }
+
+        if (filter.FromDate.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt >= filter.FromDate.Value);
+        }
+
+        if (filter.ToDate.HasValue)
+        {
+            // Include entire day (use < next day for robust filtering)
+            var nextDay = filter.ToDate.Value.Date.AddDays(1);
+            query = query.Where(o => o.CreatedAt < nextDay);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply ordering and pagination
+        var orders = await query
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .ToListAsync();
+
+        return new OrderListResponse
+        {
+            Orders = orders.Select(MapToOrderDto).ToList(),
+            TotalCount = totalCount,
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        };
+    }
+
     public async Task<List<SubOrderDto>> GetStoreSubOrdersAsync(Guid storeId)
     {
         var subOrders = await _dbContext.SubOrders
@@ -246,6 +290,182 @@ public class OrderService : IOrderService
             .ToListAsync();
 
         return subOrders.Select(MapToSubOrderDto).ToList();
+    }
+
+    public async Task<SubOrderListResponse> GetStoreSubOrdersAsync(Guid storeId, SubOrderFilterRequest filter)
+    {
+        var query = _dbContext.SubOrders
+            .Include(s => s.Items)
+            .Include(s => s.Order) // Include parent order for delivery address
+            .Where(s => s.StoreId == storeId);
+
+        // Apply filters
+        if (!string.IsNullOrEmpty(filter.Status))
+        {
+            query = query.Where(s => s.Status == filter.Status);
+        }
+
+        if (filter.FromDate.HasValue)
+        {
+            query = query.Where(s => s.CreatedAt >= filter.FromDate.Value);
+        }
+
+        if (filter.ToDate.HasValue)
+        {
+            // Include entire day (use < next day for robust filtering)
+            var nextDay = filter.ToDate.Value.Date.AddDays(1);
+            query = query.Where(s => s.CreatedAt < nextDay);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply ordering and pagination
+        var subOrders = await query
+            .OrderByDescending(s => s.CreatedAt)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .ToListAsync();
+
+        return new SubOrderListResponse
+        {
+            SubOrders = subOrders.Select(MapToSubOrderDto).ToList(),
+            TotalCount = totalCount,
+            Page = filter.Page,
+            PageSize = filter.PageSize
+        };
+    }
+
+    public async Task<SubOrderDto?> GetSubOrderByIdAsync(Guid subOrderId, Guid storeId)
+    {
+        var subOrder = await _dbContext.SubOrders
+            .Include(s => s.Items)
+            .Include(s => s.Order) // Include parent order for delivery address
+            .FirstOrDefaultAsync(s => s.Id == subOrderId && s.StoreId == storeId);
+
+        if (subOrder == null)
+        {
+            return null;
+        }
+
+        return MapToSubOrderDto(subOrder);
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> UpdateSubOrderStatusAsync(
+        Guid subOrderId, 
+        Guid storeId, 
+        UpdateSubOrderStatusRequest request)
+    {
+        var subOrder = await _dbContext.SubOrders
+            .Include(s => s.Order)
+                .ThenInclude(o => o!.SubOrders)
+            .FirstOrDefaultAsync(s => s.Id == subOrderId && s.StoreId == storeId);
+
+        if (subOrder == null)
+        {
+            return (false, "SubOrder not found");
+        }
+
+        // Validate status transition
+        var validationResult = ValidateStatusTransition(subOrder.Status, request.Status);
+        if (!validationResult.IsValid)
+        {
+            return (false, validationResult.ErrorMessage);
+        }
+
+        // Validate tracking number for shipped status
+        if (request.Status == SubOrderStatus.Shipped && string.IsNullOrWhiteSpace(request.TrackingNumber))
+        {
+            // TODO: Should tracking number be mandatory when marking as shipped?
+            // Current assumption: recommended but not mandatory
+            _logger.LogWarning("SubOrder {SubOrderId} marked as shipped without tracking number", subOrderId);
+        }
+
+        // Update SubOrder status
+        var oldStatus = subOrder.Status;
+        subOrder.Status = request.Status;
+        subOrder.UpdatedAt = DateTime.UtcNow;
+
+        // Set specific timestamp fields based on status
+        if (request.Status == SubOrderStatus.Shipped)
+        {
+            subOrder.ShippedAt = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(request.TrackingNumber))
+            {
+                subOrder.TrackingNumber = request.TrackingNumber;
+            }
+        }
+        else if (request.Status == SubOrderStatus.Delivered)
+        {
+            subOrder.DeliveredAt = DateTime.UtcNow;
+        }
+
+        // Check if all SubOrders are completed to update parent Order status
+        var allSubOrders = subOrder.Order!.SubOrders;
+
+        // Determine parent order status
+        if (allSubOrders.All(s => s.Status == SubOrderStatus.Delivered))
+        {
+            subOrder.Order.Status = OrderStatus.Completed;
+            subOrder.Order.UpdatedAt = DateTime.UtcNow;
+        }
+        else if (allSubOrders.All(s => s.Status == SubOrderStatus.Cancelled))
+        {
+            subOrder.Order.Status = OrderStatus.Cancelled;
+            subOrder.Order.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "SubOrder status updated: SubOrderId={SubOrderId}, OldStatus={OldStatus}, NewStatus={NewStatus}, StoreId={StoreId}",
+            subOrderId, oldStatus, request.Status, storeId);
+
+        // TODO: Send notification to buyer about status change
+        // TODO: Trigger payout calculation when status is Delivered
+
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Validates if a status transition is allowed based on the workflow.
+    /// Workflow: Processing → Shipped → Delivered
+    /// Cancellation allowed from Processing or Shipped (with restrictions)
+    /// </summary>
+    private static (bool IsValid, string? ErrorMessage) ValidateStatusTransition(string currentStatus, string newStatus)
+    {
+        // Allow setting to same status (no-op)
+        if (currentStatus == newStatus)
+        {
+            return (true, null);
+        }
+
+        // Define valid transitions based on requirements
+        // Note: The requirement mentions "New → In preparation → Shipped → Completed → Canceled"
+        // but the existing code uses "Processing" instead of "New/In preparation"
+        // TODO: Should we introduce separate "New" and "InPreparation" statuses or keep "Processing"?
+        // Current assumption: "Processing" covers both "New" and "In Preparation"
+        
+        var validTransitions = new Dictionary<string, List<string>>
+        {
+            [SubOrderStatus.Pending] = new() { SubOrderStatus.Processing, SubOrderStatus.Cancelled },
+            [SubOrderStatus.Processing] = new() { SubOrderStatus.Shipped, SubOrderStatus.Cancelled },
+            [SubOrderStatus.Shipped] = new() { SubOrderStatus.Delivered, SubOrderStatus.Cancelled },
+            [SubOrderStatus.Delivered] = new() { }, // Terminal state - no transitions
+            [SubOrderStatus.Cancelled] = new() { }  // Terminal state - no transitions
+        };
+
+        if (!validTransitions.TryGetValue(currentStatus, out var allowedTransitions))
+        {
+            return (false, $"Invalid current status: {currentStatus}");
+        }
+
+        if (!allowedTransitions.Contains(newStatus))
+        {
+            return (false, $"Cannot transition from {currentStatus} to {newStatus}. Allowed transitions: {string.Join(", ", allowedTransitions)}");
+        }
+
+        return (true, null);
     }
 
     public async Task<bool> UpdatePaymentStatusAsync(Guid orderId, string paymentStatus, string? transactionId)
@@ -414,6 +634,8 @@ public class OrderService : IOrderService
         {
             Id = subOrder.Id,
             SubOrderNumber = subOrder.SubOrderNumber,
+            OrderId = subOrder.OrderId,
+            OrderNumber = subOrder.Order?.OrderNumber ?? string.Empty,
             StoreId = subOrder.StoreId,
             StoreName = subOrder.StoreName,
             ProductsTotal = subOrder.ProductsTotal,
@@ -425,7 +647,17 @@ public class OrderService : IOrderService
             Items = subOrder.Items.Select(MapToSubOrderItemDto).ToList(),
             CreatedAt = subOrder.CreatedAt,
             ShippedAt = subOrder.ShippedAt,
-            DeliveredAt = subOrder.DeliveredAt
+            DeliveredAt = subOrder.DeliveredAt,
+            // Include delivery information from parent Order (for seller view)
+            DeliveryRecipientName = subOrder.Order?.DeliveryRecipientName,
+            DeliveryAddressLine1 = subOrder.Order?.DeliveryAddressLine1,
+            DeliveryAddressLine2 = subOrder.Order?.DeliveryAddressLine2,
+            DeliveryCity = subOrder.Order?.DeliveryCity,
+            DeliveryState = subOrder.Order?.DeliveryState,
+            DeliveryPostalCode = subOrder.Order?.DeliveryPostalCode,
+            DeliveryCountry = subOrder.Order?.DeliveryCountry,
+            BuyerEmail = subOrder.Order?.BuyerEmail,
+            BuyerPhone = subOrder.Order?.BuyerPhone
         };
     }
 

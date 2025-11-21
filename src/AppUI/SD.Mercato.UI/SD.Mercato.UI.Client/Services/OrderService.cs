@@ -57,6 +57,8 @@ public class SubOrderDto
 {
     public Guid Id { get; set; }
     public string SubOrderNumber { get; set; } = string.Empty;
+    public Guid OrderId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
     public Guid StoreId { get; set; }
     public string StoreName { get; set; } = string.Empty;
     public decimal ProductsTotal { get; set; }
@@ -69,6 +71,17 @@ public class SubOrderDto
     public DateTime CreatedAt { get; set; }
     public DateTime? ShippedAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
+    
+    // Delivery information (for seller view)
+    public string? DeliveryRecipientName { get; set; }
+    public string? DeliveryAddressLine1 { get; set; }
+    public string? DeliveryAddressLine2 { get; set; }
+    public string? DeliveryCity { get; set; }
+    public string? DeliveryState { get; set; }
+    public string? DeliveryPostalCode { get; set; }
+    public string? DeliveryCountry { get; set; }
+    public string? BuyerEmail { get; set; }
+    public string? BuyerPhone { get; set; }
 }
 
 public class SubOrderItemDto
@@ -116,6 +129,12 @@ public interface IOrderService
 {
     Task<CreateOrderResponse?> CreateOrderAsync(CreateOrderRequest request);
     Task<List<OrderDto>?> GetOrdersAsync();
+    Task<OrderListResponse?> GetOrdersAsync(
+        string? status = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int page = 1,
+        int pageSize = 20);
     Task<OrderDto?> GetOrderByIdAsync(Guid orderId);
     Task<CalculateShippingResponse?> CalculateShippingAsync(CalculateShippingRequest request);
 }
@@ -169,6 +188,41 @@ public class OrderService : IOrderService
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting orders: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<OrderListResponse?> GetOrdersAsync(
+        string? status = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        int page = 1,
+        int pageSize = 20)
+    {
+        try
+        {
+            var queryParams = new List<string>();
+            
+            if (!string.IsNullOrEmpty(status))
+                queryParams.Add($"status={Uri.EscapeDataString(status)}");
+            
+            if (fromDate.HasValue)
+                queryParams.Add($"fromDate={fromDate.Value:yyyy-MM-dd}");
+            
+            if (toDate.HasValue)
+                queryParams.Add($"toDate={toDate.Value:yyyy-MM-dd}");
+            
+            queryParams.Add($"page={page}");
+            queryParams.Add($"pageSize={pageSize}");
+            
+            var queryString = string.Join("&", queryParams);
+            var url = $"/api/orders?{queryString}";
+            
+            return await _httpClient.GetFromJsonAsync<OrderListResponse>(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting orders with filters: {ex.Message}");
             return null;
         }
     }

@@ -24,12 +24,18 @@ public class OrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all orders for the authenticated user.
+    /// Get all orders for the authenticated user with optional filtering.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(List<OrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OrderListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<List<OrderDto>>> GetUserOrders()
+    public async Task<ActionResult<OrderListResponse>> GetUserOrders(
+        [FromQuery] string? status = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -37,8 +43,38 @@ public class OrdersController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var orders = await _orderService.GetUserOrdersAsync(userId);
-        return Ok(orders);
+        // Validate pagination parameters
+        if (page < 1)
+        {
+            return BadRequest(new { message = "Page number must be at least 1" });
+        }
+
+        if (pageSize < 1 || pageSize > 100)
+        {
+            return BadRequest(new { message = "Page size must be between 1 and 100" });
+        }
+
+        // Validate status filter
+        if (!string.IsNullOrEmpty(status))
+        {
+            var validStatuses = new[] { "Pending", "Processing", "Completed", "Cancelled" };
+            if (!validStatuses.Contains(status))
+            {
+                return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", validStatuses)}" });
+            }
+        }
+
+        var filter = new OrderFilterRequest
+        {
+            Status = status,
+            FromDate = fromDate,
+            ToDate = toDate,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        var result = await _orderService.GetUserOrdersAsync(userId, filter);
+        return Ok(result);
     }
 
     /// <summary>
