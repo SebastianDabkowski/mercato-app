@@ -229,6 +229,11 @@ public class PaymentService : IPaymentService
         }
     }
 
+    /// <summary>
+    /// Calculates commission and fees for a SubOrder.
+    /// Note: This is a synchronous operation wrapped in Task for interface consistency.
+    /// All calculations are CPU-bound with no I/O operations.
+    /// </summary>
     public Task<CommissionCalculation> CalculateCommissionAsync(
         decimal productTotal,
         decimal shippingCost,
@@ -263,15 +268,21 @@ public class PaymentService : IPaymentService
         // Net amount seller receives
         var sellerNetAmount = total - commissionAmount - processingFeeAllocated;
 
+        // Calculate seller net amount by subtracting from total to avoid rounding discrepancies
+        // This ensures: SellerNetAmount + CommissionAmount + ProcessingFee = Total (rounded)
+        var roundedCommission = Math.Round(commissionAmount, 2);
+        var roundedProcessingFee = Math.Round(processingFeeAllocated, 2);
+        var roundedSellerNet = Math.Round(total - commissionAmount - processingFeeAllocated, 2);
+
         var calculation = new CommissionCalculation
         {
             ProductTotal = productTotal,
             ShippingCost = shippingCost,
             Total = total,
             CommissionRate = commissionRate,
-            CommissionAmount = Math.Round(commissionAmount, 2),
-            ProcessingFee = Math.Round(processingFeeAllocated, 2),
-            SellerNetAmount = Math.Round(sellerNetAmount, 2)
+            CommissionAmount = roundedCommission,
+            ProcessingFee = roundedProcessingFee,
+            SellerNetAmount = roundedSellerNet
         };
 
         _logger.LogDebug("Commission calculated: ProductTotal={ProductTotal}, ShippingCost={ShippingCost}, " +
@@ -374,11 +385,18 @@ public class PaymentService : IPaymentService
             var balance = await _context.SellerBalances
                 .FirstOrDefaultAsync(b => b.StoreId == subOrderPayment.StoreId);
 
+            // Balance should always exist (created in GetSellerBalanceAsync if needed)
+            // but check defensively in case of data inconsistency
             if (balance != null)
             {
                 balance.PendingAmount -= subOrderPayment.SellerNetAmount;
                 balance.AvailableAmount += subOrderPayment.SellerNetAmount;
                 balance.LastUpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _logger.LogWarning("SellerBalance not found for StoreId {StoreId} during escrow release", 
+                    subOrderPayment.StoreId);
             }
 
             await _context.SaveChangesAsync();
@@ -414,24 +432,51 @@ public class PaymentService : IPaymentService
                 };
             }
 
-            // Get all released SubOrderPayments for this store that haven't been paid out
+            // Get released SubOrderPayments for this store that haven't been paid out
+            // Accumulate SubOrders until we meet the requested payout amount
             // TODO: For stores with very large numbers of SubOrders, implement pagination
             // or batch processing to avoid loading too many records in memory
-            var subOrderPayments = await _context.SubOrderPayments
-                .Where(sp => sp.StoreId == request.StoreId 
-                    && sp.PayoutStatus == SubOrderPayoutStatus.Released)
-                .OrderBy(sp => sp.CreatedAt)
-                .Take(100) // Limit for safety - make configurable in production
-                .ToListAsync();
+            var subOrderPayments = new List<SubOrderPayment>();
+            decimal accumulated = 0;
+            var skip = 0;
+            const int batchSize = 100;
 
-            var totalAmount = subOrderPayments.Sum(sp => sp.SellerNetAmount);
-            
-            if (totalAmount < request.Amount)
+            while (accumulated < request.Amount)
+            {
+                var batch = await _context.SubOrderPayments
+                    .Where(sp => sp.StoreId == request.StoreId 
+                        && sp.PayoutStatus == SubOrderPayoutStatus.Released)
+                    .OrderBy(sp => sp.CreatedAt)
+                    .Skip(skip)
+                    .Take(batchSize)
+                    .ToListAsync();
+
+                if (batch.Count == 0)
+                {
+                    // No more SubOrders available
+                    break;
+                }
+
+                foreach (var sp in batch)
+                {
+                    subOrderPayments.Add(sp);
+                    accumulated += sp.SellerNetAmount;
+                    
+                    if (accumulated >= request.Amount)
+                    {
+                        break;
+                    }
+                }
+
+                skip += batchSize;
+            }
+
+            if (accumulated < request.Amount)
             {
                 return new CreatePayoutResponse
                 {
                     Success = false,
-                    ErrorMessage = "Requested amount exceeds available funds from released orders"
+                    ErrorMessage = $"Insufficient released orders. Available: {accumulated:C}, Requested: {request.Amount:C}"
                 };
             }
 

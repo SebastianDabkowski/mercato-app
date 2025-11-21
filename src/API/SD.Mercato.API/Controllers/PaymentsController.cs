@@ -137,12 +137,12 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SellerBalanceResponse>> GetSellerBalance(Guid storeId)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var isAdmin = User.IsInRole("Administrator");
-
         // TODO: Verify that the authenticated user owns this store
         // This requires integration with SellerPanel module to check store ownership
         // For now, we trust the authorization attribute
+        // var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // var isAdmin = User.IsInRole("Administrator");
+        // if (!isAdmin && userStoreId != storeId) return Forbid();
 
         var balance = await _paymentService.GetSellerBalanceAsync(storeId);
 
@@ -169,10 +169,10 @@ public class PaymentsController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
         // TODO: Verify that the authenticated user owns this store
         // This requires integration with SellerPanel module
+        // var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // if (!isAdmin && userStoreId != request.StoreId) return Forbid();
 
         _logger.LogInformation("Creating payout for Store {StoreId}, Amount {Amount}", 
             request.StoreId, request.Amount);
