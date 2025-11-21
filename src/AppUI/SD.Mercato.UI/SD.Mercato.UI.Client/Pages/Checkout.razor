@@ -1,0 +1,389 @@
+@page "/checkout"
+@using SD.Mercato.UI.Client.Services
+@inject ICartService CartService
+@inject IOrderService OrderService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Checkout - Mercato</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Checkout</h1>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (cart == null || !cart.Items.Any())
+    {
+        <div class="alert alert-info">
+            <h4>Your cart is empty</h4>
+            <p>Browse our <a href="/catalog">product catalog</a> to add items to your cart.</p>
+        </div>
+    }
+    else
+    {
+        @if (errorMessage != null)
+        {
+            <div class="alert alert-danger">
+                @errorMessage
+            </div>
+        }
+
+        <div class="row">
+            <!-- Left Column: Forms -->
+            <div class="col-lg-8">
+                <!-- Delivery Address -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-geo-alt"></i> Delivery Address
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Recipient Name *</label>
+                                <input type="text" class="form-control" @bind="deliveryRecipientName" placeholder="Full name" />
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Address Line 1 *</label>
+                                <input type="text" class="form-control" @bind="deliveryAddressLine1" placeholder="Street address" />
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Address Line 2</label>
+                                <input type="text" class="form-control" @bind="deliveryAddressLine2" placeholder="Apartment, suite, etc. (optional)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">City *</label>
+                                <input type="text" class="form-control" @bind="deliveryCity" placeholder="City" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">State *</label>
+                                <input type="text" class="form-control" @bind="deliveryState" placeholder="State" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Postal Code *</label>
+                                <input type="text" class="form-control" @bind="deliveryPostalCode" placeholder="ZIP" />
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Country *</label>
+                                <input type="text" class="form-control" @bind="deliveryCountry" placeholder="Country" readonly />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person"></i> Contact Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email Address *</label>
+                                <input type="email" class="form-control" @bind="contactEmail" placeholder="email@example.com" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Phone Number *</label>
+                                <input type="tel" class="form-control" @bind="contactPhone" placeholder="+1234567890" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Methods by Seller -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-truck"></i> Shipping Method
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var storeGroup in cart.ItemsByStore)
+                        {
+                            var storeName = cart.Items.FirstOrDefault(i => i.StoreId == storeGroup.Key)?.StoreName ?? "Unknown Store";
+                            
+                            <div class="mb-3">
+                                <h6>@storeName</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" 
+                                           name="shipping_@storeGroup.Key" 
+                                           id="platform_@storeGroup.Key"
+                                           checked="@(GetShippingMethod(storeGroup.Key) == "Platform Managed")"
+                                           @onchange="@(() => SetShippingMethod(storeGroup.Key, "Platform Managed"))" />
+                                    <label class="form-check-label" for="platform_@storeGroup.Key">
+                                        Platform Managed (5-7 business days) - $@GetShippingCost(storeGroup.Key).ToString("F2")
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-credit-card"></i> Payment Method
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="paymentMethod" id="creditCard"
+                                   checked="@(paymentMethod == "Credit Card")"
+                                   @onchange="@(() => paymentMethod = "Credit Card")" />
+                            <label class="form-check-label" for="creditCard">
+                                <i class="bi bi-credit-card-2-front"></i> Credit/Debit Card
+                            </label>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-info-circle"></i> You will be redirected to our secure payment processor.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Order Summary -->
+            <div class="col-lg-4">
+                <div class="card sticky-top" style="top: 20px;">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var storeGroup in cart.ItemsByStore)
+                        {
+                            var storeName = cart.Items.FirstOrDefault(i => i.StoreId == storeGroup.Key)?.StoreName ?? "Unknown Store";
+                            var productsSubtotal = storeGroup.Value.Sum(i => i.Subtotal);
+                            var shippingCost = GetShippingCost(storeGroup.Key);
+                            
+                            <div class="mb-3 pb-3 border-bottom">
+                                <h6 class="text-muted">@storeName</h6>
+                                @foreach (var item in storeGroup.Value)
+                                {
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span>@item.ProductTitle × @item.Quantity</span>
+                                        <span>$@item.Subtotal.ToString("F2")</span>
+                                    </div>
+                                }
+                                <div class="d-flex justify-content-between small text-muted mt-2">
+                                    <span>Shipping:</span>
+                                    <span>$@shippingCost.ToString("F2")</span>
+                                </div>
+                                <div class="d-flex justify-content-between fw-bold mt-1">
+                                    <span>Subtotal:</span>
+                                    <span>$@((productsSubtotal + shippingCost).ToString("F2"))</span>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between fw-bold h5 mb-0">
+                            <span>Total:</span>
+                            <span class="text-primary">$@CalculateGrandTotal().ToString("F2")</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-primary btn-lg w-100" @onclick="PlaceOrder" disabled="@isPlacingOrder">
+                            @if (isPlacingOrder)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Place Order</span>
+                            }
+                        </button>
+                        <div class="text-center mt-2">
+                            <small class="text-muted">Secure checkout powered by Mercato</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CartDto? cart;
+    private bool isLoading = true;
+    private bool isPlacingOrder = false;
+    private string? errorMessage;
+
+    // Delivery address fields
+    private string deliveryRecipientName = "";
+    private string deliveryAddressLine1 = "";
+    private string? deliveryAddressLine2;
+    private string deliveryCity = "";
+    private string deliveryState = "";
+    private string deliveryPostalCode = "";
+    private string deliveryCountry = "United States";
+
+    // Contact information
+    private string contactEmail = "";
+    private string contactPhone = "";
+
+    // Payment and shipping
+    private string paymentMethod = "Credit Card";
+    private readonly Dictionary<Guid, string> shippingMethods = new();
+    private Dictionary<Guid, decimal> cachedShippingCosts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCart();
+        await LoadUserProfile();
+        await CalculateShippingCosts();
+    }
+
+    private async Task LoadCart()
+    {
+        isLoading = true;
+        cart = await CartService.GetCartAsync();
+        
+        // Initialize shipping methods to default
+        if (cart != null)
+        {
+            foreach (var storeId in cart.ItemsByStore.Keys)
+            {
+                shippingMethods[storeId] = "Platform Managed";
+            }
+        }
+        
+        isLoading = false;
+    }
+
+    private async Task LoadUserProfile()
+    {
+        // Pre-fill contact info from user profile
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user != null)
+        {
+            contactEmail = user.Email ?? "";
+            contactPhone = user.PhoneNumber ?? "";
+            deliveryRecipientName = $"{user.FirstName} {user.LastName}".Trim();
+        }
+    }
+
+    private string GetShippingMethod(Guid storeId)
+    {
+        return shippingMethods.GetValueOrDefault(storeId, "Platform Managed");
+    }
+
+    private async Task SetShippingMethod(Guid storeId, string method)
+    {
+        shippingMethods[storeId] = method;
+        await CalculateShippingCosts();
+    }
+
+    private async Task CalculateShippingCosts()
+    {
+        if (cart == null) return;
+
+        var request = new CalculateShippingRequest();
+        foreach (var (storeId, items) in cart.ItemsByStore)
+        {
+            request.ShippingMethods[storeId] = new ShippingMethodSelection
+            {
+                Method = GetShippingMethod(storeId),
+                ItemCount = items.Count
+            };
+        }
+
+        var response = await OrderService.CalculateShippingAsync(request);
+        if (response != null)
+        {
+            cachedShippingCosts = response.ShippingCostsByStore;
+        }
+    }
+
+    private decimal GetShippingCost(Guid storeId)
+    {
+        return cachedShippingCosts.GetValueOrDefault(storeId, 0);
+    }
+
+    private decimal CalculateGrandTotal()
+    {
+        if (cart == null) return 0;
+
+        decimal total = 0;
+        foreach (var storeGroup in cart.ItemsByStore)
+        {
+            var productsSubtotal = storeGroup.Value.Sum(i => i.Subtotal);
+            var shippingCost = GetShippingCost(storeGroup.Key);
+            total += productsSubtotal + shippingCost;
+        }
+        return total;
+    }
+
+    private async Task PlaceOrder()
+    {
+        errorMessage = null;
+
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(deliveryRecipientName) ||
+            string.IsNullOrWhiteSpace(deliveryAddressLine1) ||
+            string.IsNullOrWhiteSpace(deliveryCity) ||
+            string.IsNullOrWhiteSpace(deliveryState) ||
+            string.IsNullOrWhiteSpace(deliveryPostalCode) ||
+            string.IsNullOrWhiteSpace(contactEmail) ||
+            string.IsNullOrWhiteSpace(contactPhone))
+        {
+            errorMessage = "Please fill in all required fields.";
+            return;
+        }
+
+        isPlacingOrder = true;
+
+        try
+        {
+            var request = new CreateOrderRequest
+            {
+                DeliveryRecipientName = deliveryRecipientName,
+                ContactEmail = contactEmail,
+                ContactPhone = contactPhone,
+                DeliveryAddressLine1 = deliveryAddressLine1,
+                DeliveryAddressLine2 = deliveryAddressLine2,
+                DeliveryCity = deliveryCity,
+                DeliveryState = deliveryState,
+                DeliveryPostalCode = deliveryPostalCode,
+                DeliveryCountry = deliveryCountry,
+                PaymentMethod = paymentMethod,
+                ShippingMethods = shippingMethods
+            };
+
+            var result = await OrderService.CreateOrderAsync(request);
+
+            if (result != null && result.Success)
+            {
+                // Redirect to payment or order confirmation
+                if (!string.IsNullOrEmpty(result.PaymentRedirectUrl))
+                {
+                    Navigation.NavigateTo(result.PaymentRedirectUrl);
+                }
+                else if (result.OrderId.HasValue)
+                {
+                    Navigation.NavigateTo($"/orders/{result.OrderId}");
+                }
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "Failed to create order. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isPlacingOrder = false;
+        }
+    }
+}

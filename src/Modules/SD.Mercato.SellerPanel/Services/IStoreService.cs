@@ -46,4 +46,9 @@ public interface IStoreService
     /// Check if a user already owns a store.
     /// </summary>
     Task<bool> UserOwnsStoreAsync(string userId);
+
+    /// <summary>
+    /// Get multiple stores by their IDs (batch load).
+    /// </summary>
+    Task<List<StoreDto>> GetStoresByIdsAsync(List<Guid> storeIds);
 }

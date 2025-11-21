@@ -264,6 +264,20 @@ public class StoreService : IStoreService
             .AnyAsync(s => s.OwnerUserId == userId);
     }
 
+    public async Task<List<StoreDto>> GetStoresByIdsAsync(List<Guid> storeIds)
+    {
+        if (storeIds == null || !storeIds.Any())
+        {
+            return new List<StoreDto>();
+        }
+
+        var stores = await _context.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToListAsync();
+
+        return stores.Select(MapToDto).ToList();
+    }
+
     public async Task<List<StoreListItemDto>> GetActiveStoresAsync()
     {
         var stores = await _context.Stores
