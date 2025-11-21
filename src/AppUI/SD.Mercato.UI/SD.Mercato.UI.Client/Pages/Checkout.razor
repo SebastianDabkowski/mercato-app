@@ -120,7 +120,7 @@
                                            checked="@(GetShippingMethod(storeGroup.Key) == "Platform Managed")"
                                            @onchange="@(() => SetShippingMethod(storeGroup.Key, "Platform Managed"))" />
                                     <label class="form-check-label" for="platform_@storeGroup.Key">
-                                        Platform Managed (5-7 business days) - $@CalculateShippingCost("Platform Managed", storeGroup.Value.Count).ToString("F2")
+                                        Platform Managed (5-7 business days) - $@GetShippingCost(storeGroup.Key).ToString("F2")
                                     </label>
                                 </div>
                             </div>
@@ -162,7 +162,7 @@
                         {
                             var storeName = cart.Items.FirstOrDefault(i => i.StoreId == storeGroup.Key)?.StoreName ?? "Unknown Store";
                             var productsSubtotal = storeGroup.Value.Sum(i => i.Subtotal);
-                            var shippingCost = CalculateShippingCost(GetShippingMethod(storeGroup.Key), storeGroup.Value.Count);
+                            var shippingCost = GetShippingCost(storeGroup.Key);
                             
                             <div class="mb-3 pb-3 border-bottom">
                                 <h6 class="text-muted">@storeName</h6>
@@ -232,12 +232,14 @@
 
     // Payment and shipping
     private string paymentMethod = "Credit Card";
-    private Dictionary<Guid, string> shippingMethods = new();
+    private readonly Dictionary<Guid, string> shippingMethods = new();
+    private Dictionary<Guid, decimal> cachedShippingCosts = new();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadCart();
         await LoadUserProfile();
+        await CalculateShippingCosts();
     }
 
     private async Task LoadCart()
@@ -274,20 +276,36 @@
         return shippingMethods.GetValueOrDefault(storeId, "Platform Managed");
     }
 
-    private void SetShippingMethod(Guid storeId, string method)
+    private async Task SetShippingMethod(Guid storeId, string method)
     {
         shippingMethods[storeId] = method;
+        await CalculateShippingCosts();
     }
 
-    private decimal CalculateShippingCost(string method, int itemCount)
+    private async Task CalculateShippingCosts()
     {
-        // MVP: Simple flat rate shipping calculation
-        return method.ToLower() switch
+        if (cart == null) return;
+
+        var request = new CalculateShippingRequest();
+        foreach (var (storeId, items) in cart.ItemsByStore)
         {
-            "platform managed" => 5.00m + (itemCount * 2.00m),
-            "express" => 15.00m + (itemCount * 3.00m),
-            _ => 5.00m + (itemCount * 2.00m)
-        };
+            request.ShippingMethods[storeId] = new ShippingMethodSelection
+            {
+                Method = GetShippingMethod(storeId),
+                ItemCount = items.Count
+            };
+        }
+
+        var response = await OrderService.CalculateShippingAsync(request);
+        if (response != null)
+        {
+            cachedShippingCosts = response.ShippingCostsByStore;
+        }
+    }
+
+    private decimal GetShippingCost(Guid storeId)
+    {
+        return cachedShippingCosts.GetValueOrDefault(storeId, 0);
     }
 
     private decimal CalculateGrandTotal()
@@ -298,7 +316,7 @@
         foreach (var storeGroup in cart.ItemsByStore)
         {
             var productsSubtotal = storeGroup.Value.Sum(i => i.Subtotal);
-            var shippingCost = CalculateShippingCost(GetShippingMethod(storeGroup.Key), storeGroup.Value.Count);
+            var shippingCost = GetShippingCost(storeGroup.Key);
             total += productsSubtotal + shippingCost;
         }
         return total;

@@ -36,4 +36,9 @@ public interface IOrderService
     /// Mark sub-order as shipped by seller.
     /// </summary>
     Task<bool> MarkSubOrderAsShippedAsync(Guid subOrderId, Guid storeId, string? trackingNumber);
+
+    /// <summary>
+    /// Calculate shipping costs for cart items grouped by store.
+    /// </summary>
+    Task<CalculateShippingResponse> CalculateShippingCostsAsync(CalculateShippingRequest request);
 }

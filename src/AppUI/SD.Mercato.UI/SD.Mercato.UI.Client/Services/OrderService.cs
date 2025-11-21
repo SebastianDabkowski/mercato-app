@@ -84,6 +84,32 @@ public class SubOrderItemDto
 }
 
 /// <summary>
+/// Request model for calculating shipping costs.
+/// </summary>
+public class CalculateShippingRequest
+{
+    public Dictionary<Guid, ShippingMethodSelection> ShippingMethods { get; set; } = new();
+}
+
+/// <summary>
+/// Shipping method selection for a store.
+/// </summary>
+public class ShippingMethodSelection
+{
+    public string Method { get; set; } = "Platform Managed";
+    public int ItemCount { get; set; }
+}
+
+/// <summary>
+/// Response model for shipping cost calculation.
+/// </summary>
+public class CalculateShippingResponse
+{
+    public Dictionary<Guid, decimal> ShippingCostsByStore { get; set; } = new();
+    public decimal TotalShippingCost { get; set; }
+}
+
+/// <summary>
 /// Service for order operations.
 /// </summary>
 public interface IOrderService
@@ -91,6 +117,7 @@ public interface IOrderService
     Task<CreateOrderResponse?> CreateOrderAsync(CreateOrderRequest request);
     Task<List<OrderDto>?> GetOrdersAsync();
     Task<OrderDto?> GetOrderByIdAsync(Guid orderId);
+    Task<CalculateShippingResponse?> CalculateShippingAsync(CalculateShippingRequest request);
 }
 
 public class OrderService : IOrderService
@@ -155,6 +182,27 @@ public class OrderService : IOrderService
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting order: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<CalculateShippingResponse?> CalculateShippingAsync(CalculateShippingRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/api/checkout/calculate-shipping", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<CalculateShippingResponse>();
+            }
+
+            Console.WriteLine($"Calculate shipping failed: {response.StatusCode}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error calculating shipping: {ex.Message}");
             return null;
         }
     }

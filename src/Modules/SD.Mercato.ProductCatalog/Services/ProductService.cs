@@ -335,6 +335,21 @@ public class ProductService : IProductService
         return !await query.AnyAsync();
     }
 
+    public async Task<List<ProductDto>> GetProductsByIdsAsync(List<Guid> productIds)
+    {
+        if (productIds == null || !productIds.Any())
+        {
+            return new List<ProductDto>();
+        }
+
+        var products = await _context.Products
+            .Include(p => p.Category)
+            .Where(p => productIds.Contains(p.Id))
+            .ToListAsync();
+
+        return products.Select(MapToDto).ToList();
+    }
+
     public async Task<PaginatedProductsResponse> SearchProductsAsync(ProductSearchRequest request)
     {
         try

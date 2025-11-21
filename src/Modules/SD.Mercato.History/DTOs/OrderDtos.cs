@@ -162,3 +162,29 @@ public class SellerGroupDto
     public decimal Total { get; set; }
     public List<string> AvailableShippingMethods { get; set; } = new();
 }
+
+/// <summary>
+/// Request model for calculating shipping costs.
+/// </summary>
+public class CalculateShippingRequest
+{
+    public Dictionary<Guid, ShippingMethodSelection> ShippingMethods { get; set; } = new();
+}
+
+/// <summary>
+/// Shipping method selection for a store.
+/// </summary>
+public class ShippingMethodSelection
+{
+    public string Method { get; set; } = "Platform Managed";
+    public int ItemCount { get; set; }
+}
+
+/// <summary>
+/// Response model for shipping cost calculation.
+/// </summary>
+public class CalculateShippingResponse
+{
+    public Dictionary<Guid, decimal> ShippingCostsByStore { get; set; } = new();
+    public decimal TotalShippingCost { get; set; }
+}

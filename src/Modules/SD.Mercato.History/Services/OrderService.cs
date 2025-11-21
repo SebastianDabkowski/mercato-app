@@ -99,12 +99,24 @@ public class OrderService : IOrderService
                 CreatedAt = DateTime.UtcNow
             };
 
+            // Batch load all required data upfront to avoid N+1 queries
+            var storeIds = itemsByStore.Keys.ToList();
+            var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
+
+            var stores = await _storeService.GetStoresByIdsAsync(storeIds);
+            var products = await _productService.GetProductsByIdsAsync(productIds);
+
+            // Create lookup dictionaries for O(1) access
+            var storeDict = stores.ToDictionary(s => s.Id);
+            var productDict = products.ToDictionary(p => p.Id);
+
             // Create SubOrders for each seller
             foreach (var (storeId, storeItems) in itemsByStore)
             {
-                // Get store info
-                var store = await _storeService.GetStoreByIdAsync(storeId);
-                var storeName = store?.DisplayName ?? "Unknown Store";
+                // Get store info from dictionary
+                var storeName = storeDict.TryGetValue(storeId, out var store) 
+                    ? store.DisplayName 
+                    : "Unknown Store";
 
                 // Get shipping method for this store
                 var shippingMethod = request.ShippingMethods.GetValueOrDefault(storeId, "Platform Managed");
@@ -135,9 +147,10 @@ public class OrderService : IOrderService
                 // Create SubOrderItems
                 foreach (var cartItem in storeItems)
                 {
-                    // TODO: Get actual SKU from Product entity via ProductService
-                    var product = await _productService.GetProductByIdAsync(cartItem.ProductId);
-                    var productSku = product?.SKU ?? cartItem.ProductId.ToString();
+                    // Get product SKU from dictionary
+                    var productSku = productDict.TryGetValue(cartItem.ProductId, out var product)
+                        ? product.SKU
+                        : cartItem.ProductId.ToString();
 
                     var subOrderItem = new SubOrderItem
                     {
@@ -318,22 +331,38 @@ public class OrderService : IOrderService
         return true;
     }
 
+    public Task<CalculateShippingResponse> CalculateShippingCostsAsync(CalculateShippingRequest request)
+    {
+        var response = new CalculateShippingResponse();
+        decimal totalShipping = 0;
+
+        foreach (var (storeId, selection) in request.ShippingMethods)
+        {
+            var cost = CalculateShippingCost(selection.Method, selection.ItemCount);
+            response.ShippingCostsByStore[storeId] = cost;
+            totalShipping += cost;
+        }
+
+        response.TotalShippingCost = totalShipping;
+        return Task.FromResult(response);
+    }
+
     private static string GenerateOrderNumber()
     {
-        // Generate unique order number: MKT-YYYY-NNNNNN
-        // Using timestamp + GUID for uniqueness (no need for cryptographic random here)
+        // Generate unique order number: MKT-YYYYMMDD-NNNNNNNNNN
+        // Using timestamp (date) + longer GUID part for better uniqueness
         var timestamp = DateTime.UtcNow;
-        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
-        return $"MKT-{timestamp:yyyy}-{guidPart}";
+        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper();
+        return $"MKT-{timestamp:yyyyMMdd}-{guidPart}";
     }
 
     private static string GenerateSubOrderNumber()
     {
-        // Generate unique sub-order number: SUB-YYYY-NNNNNN
-        // Using timestamp + GUID for uniqueness (no need for cryptographic random here)
+        // Generate unique sub-order number: SUB-YYYYMMDD-NNNNNNNNNN
+        // Using timestamp (date) + longer GUID part for better uniqueness
         var timestamp = DateTime.UtcNow;
-        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
-        return $"SUB-{timestamp:yyyy}-{guidPart}";
+        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper();
+        return $"SUB-{timestamp:yyyyMMdd}-{guidPart}";
     }
 
     private static decimal CalculateShippingCost(string shippingMethod, int itemCount)

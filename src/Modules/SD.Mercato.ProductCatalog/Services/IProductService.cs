@@ -51,6 +51,11 @@ public interface IProductService
     /// Check if SKU is available within a store.
     /// </summary>
     Task<bool> IsSKUAvailableAsync(Guid storeId, string sku, Guid? excludeProductId = null);
+
+    /// <summary>
+    /// Get multiple products by their IDs (batch load).
+    /// </summary>
+    Task<List<ProductDto>> GetProductsByIdsAsync(List<Guid> productIds);
 }
 
 /// <summary>

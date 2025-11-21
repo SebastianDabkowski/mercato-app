@@ -99,6 +99,23 @@ public class CheckoutController : ControllerBase
 
         return Ok(new { message = "Payment status updated" });
     }
+
+    /// <summary>
+    /// Calculate shipping costs for the current cart.
+    /// </summary>
+    [HttpPost("calculate-shipping")]
+    [ProducesResponseType(typeof(CalculateShippingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CalculateShippingResponse>> CalculateShipping([FromBody] CalculateShippingRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _orderService.CalculateShippingCostsAsync(request);
+        return Ok(result);
+    }
 }
 
 /// <summary>
