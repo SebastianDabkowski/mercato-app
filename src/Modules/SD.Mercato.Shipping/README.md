@@ -96,6 +96,22 @@ Common carriers to integrate:
 - Entity Framework Core ready for database migrations
 - Supports async/await patterns for API calls
 
+**Important: Entity Framework Integration**
+
+The `Shipment` model is designed for future use and is **not currently integrated with Entity Framework Core**. When implementing Phase 2:
+
+1. Create a `ShippingDbContext` for this module
+2. Remove the default DateTime.UtcNow initializers from `CreatedAt` properties
+3. Set timestamp values in the service layer or configure ValueGeneratedOnAdd:
+   ```csharp
+   modelBuilder.Entity<Shipment>()
+       .Property(s => s.CreatedAt)
+       .HasDefaultValueSql("GETUTCDATE()");
+   ```
+4. Create initial EF Core migration for the Shipment tables
+
+This approach ensures timestamps are set at database insertion time rather than object creation time.
+
 ## Dependencies
 
 Current:
