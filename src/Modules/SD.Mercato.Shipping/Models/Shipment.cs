@@ -90,6 +90,7 @@ public class Shipment
 
     /// <summary>
     /// Timestamp when the shipment was created.
+    /// Note: When integrating with EF Core, set this in service layer or DbContext instead of using default value.
     /// </summary>
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -181,6 +182,7 @@ public class ShipmentTrackingEvent
 
     /// <summary>
     /// Timestamp when this event was recorded in our system.
+    /// Note: When integrating with EF Core, set this in service layer or DbContext instead of using default value.
     /// </summary>
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -74,23 +74,26 @@
                         <div class="col-md-4">
                             <label for="carrierName" class="form-label">Carrier Name (optional)</label>
                             <input type="text" id="carrierName" class="form-control" @bind="carrierName" 
-                                   placeholder="e.g., UPS, FedEx, USPS" />
+                                   placeholder="e.g., UPS, FedEx, USPS"
+                                   aria-label="Carrier name (optional field)" />
                         </div>
                         <div class="col-md-4">
                             <label for="trackingNumber" class="form-label">Tracking Number (optional)</label>
                             <input type="text" id="trackingNumber" class="form-control" @bind="trackingNumber" 
-                                   placeholder="Enter tracking number" />
+                                   placeholder="Enter tracking number"
+                                   aria-label="Tracking number (optional field)" />
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button class="btn btn-primary w-100" @onclick="@(() => UpdateStatus("Shipped"))" 
-                                    disabled="@isUpdatingStatus">
+                                    disabled="@isUpdatingStatus"
+                                    aria-label="Mark order as shipped">
                                 @if (isUpdatingStatus)
                                 {
                                     <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
                                         <span class="visually-hidden">Updating...</span>
                                     </span>
                                 }
-                                <i class="bi bi-box-seam me-2"></i> Mark as Shipped
+                                <i class="bi bi-box-seam me-2" aria-hidden="true"></i> Mark as Shipped
                             </button>
                         </div>
                     }
