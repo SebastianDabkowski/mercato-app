@@ -8,6 +8,37 @@
 <div class="container mt-4">
     <h1 class="mb-4">My Orders</h1>
 
+    <!-- Filters -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="statusFilter" class="form-label">Status</label>
+                    <select id="statusFilter" class="form-select" @bind="selectedStatus" @bind:after="ApplyFilters">
+                        <option value="">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" @bind="fromDate" @bind:after="ApplyFilters" />
+                </div>
+                <div class="col-md-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <input type="date" id="toDate" class="form-control" @bind="toDate" @bind:after="ApplyFilters" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-secondary w-100" @onclick="ClearFilters">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if (isLoading)
     {
         <div class="text-center">
@@ -16,16 +47,26 @@
             </div>
         </div>
     }
-    else if (orders == null || !orders.Any())
+    else if (response == null || response.Orders == null || !response.Orders.Any())
     {
         <div class="alert alert-info">
-            <h4>No orders yet</h4>
-            <p>You haven't placed any orders yet. Browse our <a href="/catalog">product catalog</a> to get started.</p>
+            <h4>No orders found</h4>
+            <p>@(string.IsNullOrEmpty(selectedStatus) && !fromDate.HasValue && !toDate.HasValue 
+                ? "You haven't placed any orders yet. Browse our catalog to get started." 
+                : "No orders match your current filters.")</p>
+            @if (!string.IsNullOrEmpty(selectedStatus) || fromDate.HasValue || toDate.HasValue)
+            {
+                <button class="btn btn-primary" @onclick="ClearFilters">Clear Filters</button>
+            }
+            else
+            {
+                <a href="/catalog" class="btn btn-primary">Browse Catalog</a>
+            }
         </div>
     }
     else
     {
-        @foreach (var order in orders)
+        @foreach (var order in response.Orders)
         {
             <div class="card mb-3">
                 <div class="card-header">
@@ -124,12 +165,46 @@
                 </div>
             </div>
         }
+        
+        <!-- Pagination -->
+        @if (response.TotalPages > 1)
+        {
+            <nav aria-label="Order list pagination">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" @onclick="@(() => GoToPage(currentPage - 1))" href="javascript:void(0)">Previous</a>
+                    </li>
+                    
+                    @for (int i = 1; i <= response.TotalPages; i++)
+                    {
+                        var pageNum = i;
+                        <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                            <a class="page-link" @onclick="@(() => GoToPage(pageNum))" href="javascript:void(0)">@pageNum</a>
+                        </li>
+                    }
+                    
+                    <li class="page-item @(currentPage == response.TotalPages ? "disabled" : "")">
+                        <a class="page-link" @onclick="@(() => GoToPage(currentPage + 1))" href="javascript:void(0)">Next</a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="text-center text-muted mb-3">
+                Showing @response.Orders.Count of @response.TotalCount orders
+            </div>
+        }
     }
 </div>
 
 @code {
-    private List<OrderDto>? orders;
+    private OrderListResponse? response;
     private bool isLoading = true;
+    
+    private string selectedStatus = "";
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private int currentPage = 1;
+    private int pageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
@@ -139,8 +214,40 @@
     private async Task LoadOrders()
     {
         isLoading = true;
-        orders = await OrderService.GetOrdersAsync();
+        
+        response = await OrderService.GetOrdersAsync(
+            string.IsNullOrEmpty(selectedStatus) ? null : selectedStatus,
+            fromDate,
+            toDate,
+            currentPage,
+            pageSize
+        );
+        
         isLoading = false;
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1; // Reset to first page when filters change
+        await LoadOrders();
+    }
+
+    private async Task ClearFilters()
+    {
+        selectedStatus = "";
+        fromDate = null;
+        toDate = null;
+        currentPage = 1;
+        await LoadOrders();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || (response != null && page > response.TotalPages))
+            return;
+        
+        currentPage = page;
+        await LoadOrders();
     }
 
     private void ViewOrderDetails(Guid orderId)
