@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SD.Mercato.History.Data;
 
@@ -11,9 +12,11 @@ using SD.Mercato.History.Data;
 namespace SD.Mercato.History.Migrations
 {
     [DbContext(typeof(HistoryDbContext))]
-    partial class HistoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251121142230_AddCarrierNameToSubOrder")]
+    partial class AddCarrierNameToSubOrder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

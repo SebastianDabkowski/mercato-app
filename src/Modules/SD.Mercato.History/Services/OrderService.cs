@@ -394,6 +394,10 @@ public class OrderService : IOrderService
             {
                 subOrder.TrackingNumber = request.TrackingNumber;
             }
+            if (!string.IsNullOrWhiteSpace(request.CarrierName))
+            {
+                subOrder.CarrierName = request.CarrierName;
+            }
         }
         else if (request.Status == SubOrderStatus.Delivered)
         {
@@ -643,6 +647,7 @@ public class OrderService : IOrderService
             TotalAmount = subOrder.TotalAmount,
             ShippingMethod = subOrder.ShippingMethod,
             TrackingNumber = subOrder.TrackingNumber,
+            CarrierName = subOrder.CarrierName,
             Status = subOrder.Status,
             Items = subOrder.Items.Select(MapToSubOrderItemDto).ToList(),
             CreatedAt = subOrder.CreatedAt,

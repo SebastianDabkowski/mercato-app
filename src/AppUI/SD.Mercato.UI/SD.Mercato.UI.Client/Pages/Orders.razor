@@ -128,10 +128,22 @@
                                         <span>$@subOrder.ShippingCost.ToString("F2")</span>
                                     </div>
                                     
-                                    @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
+                                    @if (!string.IsNullOrEmpty(subOrder.CarrierName) || !string.IsNullOrEmpty(subOrder.TrackingNumber))
                                     {
                                         <div class="mt-2 small">
-                                            <i class="bi bi-box-seam"></i> Tracking: <code>@subOrder.TrackingNumber</code>
+                                            <i class="bi bi-box-seam"></i> 
+                                            @if (!string.IsNullOrEmpty(subOrder.CarrierName))
+                                            {
+                                                <span>@subOrder.CarrierName</span>
+                                                @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
+                                                {
+                                                    <span> - </span>
+                                                }
+                                            }
+                                            @if (!string.IsNullOrEmpty(subOrder.TrackingNumber))
+                                            {
+                                                <span>Tracking: <code>@subOrder.TrackingNumber</code></span>
+                                            }
                                         </div>
                                     }
                                 </div>
