@@ -26,6 +26,7 @@ public static class HistoryModuleExtensions
 
         // Register services
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<ICaseService, CaseService>();
 
         return services;
     }

@@ -28,6 +28,16 @@ public class HistoryDbContext : DbContext
     /// </summary>
     public DbSet<SubOrderItem> SubOrderItems => Set<SubOrderItem>();
 
+    /// <summary>
+    /// Cases table (returns and complaints).
+    /// </summary>
+    public DbSet<Case> Cases => Set<Case>();
+
+    /// <summary>
+    /// CaseMessages table.
+    /// </summary>
+    public DbSet<CaseMessage> CaseMessages => Set<CaseMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -83,6 +93,55 @@ public class HistoryDbContext : DbContext
 
             entity.Property(i => i.UnitPrice).HasPrecision(18, 2);
             entity.Property(i => i.Subtotal).HasPrecision(18, 2);
+        });
+
+        // Configure Case entity
+        modelBuilder.Entity<Case>(entity =>
+        {
+            entity.ToTable("Cases");
+            entity.HasKey(c => c.Id);
+            entity.HasIndex(c => c.CaseNumber).IsUnique();
+            entity.HasIndex(c => c.BuyerId);
+            entity.HasIndex(c => c.OrderId);
+            entity.HasIndex(c => c.SubOrderId);
+            entity.HasIndex(c => c.StoreId);
+            entity.HasIndex(c => c.Status);
+            entity.HasIndex(c => c.CaseType);
+            entity.HasIndex(c => c.CreatedAt);
+
+            // Configure relationship with Order
+            entity.HasOne(c => c.Order)
+                .WithMany()
+                .HasForeignKey(c => c.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure relationship with SubOrder
+            entity.HasOne(c => c.SubOrder)
+                .WithMany()
+                .HasForeignKey(c => c.SubOrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure optional relationship with SubOrderItem
+            entity.HasOne(c => c.SubOrderItem)
+                .WithMany()
+                .HasForeignKey(c => c.SubOrderItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure relationship with CaseMessages
+            entity.HasMany(c => c.Messages)
+                .WithOne(m => m.Case)
+                .HasForeignKey(m => m.CaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure CaseMessage entity
+        modelBuilder.Entity<CaseMessage>(entity =>
+        {
+            entity.ToTable("CaseMessages");
+            entity.HasKey(m => m.Id);
+            entity.HasIndex(m => m.CaseId);
+            entity.HasIndex(m => m.SenderId);
+            entity.HasIndex(m => m.CreatedAt);
         });
     }
 }
