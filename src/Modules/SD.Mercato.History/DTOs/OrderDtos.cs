@@ -106,6 +106,7 @@ public class SubOrderDto
     public decimal TotalAmount { get; set; }
     public string ShippingMethod { get; set; } = string.Empty;
     public string? TrackingNumber { get; set; }
+    public string? CarrierName { get; set; }
     public string Status { get; set; } = string.Empty;
     public List<SubOrderItemDto> Items { get; set; } = new();
     public DateTime CreatedAt { get; set; }
@@ -247,7 +248,14 @@ public class UpdateSubOrderStatusRequest
     /// <summary>
     /// Tracking number (recommended when status is "Shipped").
     /// </summary>
+    [MaxLength(200)]
     public string? TrackingNumber { get; set; }
+
+    /// <summary>
+    /// Carrier name (e.g., "UPS", "FedEx", "USPS") - optional when status is "Shipped".
+    /// </summary>
+    [MaxLength(100)]
+    public string? CarrierName { get; set; }
 
     /// <summary>
     /// Optional notes for the status update.

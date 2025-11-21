@@ -77,6 +77,12 @@ public class SubOrder
     public string? TrackingNumber { get; set; }
 
     /// <summary>
+    /// Carrier name (e.g., "UPS", "FedEx", "USPS") - provided by seller when marking as shipped.
+    /// </summary>
+    [MaxLength(100)]
+    public string? CarrierName { get; set; }
+
+    /// <summary>
     /// Estimated delivery date (optional).
     /// </summary>
     public DateTime? EstimatedDeliveryDate { get; set; }
