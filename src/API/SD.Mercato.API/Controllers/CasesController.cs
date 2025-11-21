@@ -150,12 +150,35 @@ public class CasesController : ControllerBase
     /// <summary>
     /// Get all cases for a seller's store.
     /// </summary>
-    [HttpGet("seller/{storeId:guid}")]
+    [HttpGet("seller")]
     [Authorize(Roles = "Seller")]
     [ProducesResponseType(typeof(CaseListResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<CaseListResponseDto>> GetSellerCases(
+        [FromQuery] string? status = null,
+        [FromQuery] string? caseType = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        // TODO: Get seller's storeId from authenticated user/claims
+        // For now, we need a way to map seller userId to storeId
+        // This should be done via a store lookup service
+
+        return BadRequest(new { message = "Seller store lookup not yet implemented. Use /api/cases/seller/{storeId} instead." });
+    }
+
+    /// <summary>
+    /// Get all cases for a specific seller's store (alternative endpoint with explicit storeId).
+    /// </summary>
+    [HttpGet("seller/{storeId:guid}")]
+    [Authorize(Roles = "Seller")]
+    [ProducesResponseType(typeof(CaseListResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<CaseListResponseDto>> GetSellerCasesByStore(
         Guid storeId,
         [FromQuery] string? status = null,
         [FromQuery] string? caseType = null,
