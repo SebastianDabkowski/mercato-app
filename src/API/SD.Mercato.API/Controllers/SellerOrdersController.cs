@@ -35,6 +35,7 @@ public class SellerOrdersController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(SubOrderListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SubOrderListResponse>> GetSubOrders(
@@ -55,6 +56,27 @@ public class SellerOrdersController : ControllerBase
         if (store == null)
         {
             return NotFound(new { message = "Store not found for this seller" });
+        }
+
+        // Validate pagination parameters
+        if (page < 1)
+        {
+            return BadRequest(new { message = "Page number must be at least 1" });
+        }
+
+        if (pageSize < 1 || pageSize > 100)
+        {
+            return BadRequest(new { message = "Page size must be between 1 and 100" });
+        }
+
+        // Validate status filter
+        if (!string.IsNullOrEmpty(status))
+        {
+            var validStatuses = new[] { "Pending", "Processing", "Shipped", "Delivered", "Cancelled" };
+            if (!validStatuses.Contains(status))
+            {
+                return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", validStatuses)}" });
+            }
         }
 
         var filter = new SubOrderFilterRequest

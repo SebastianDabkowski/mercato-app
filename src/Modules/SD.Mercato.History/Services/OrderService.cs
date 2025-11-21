@@ -257,9 +257,9 @@ public class OrderService : IOrderService
 
         if (filter.ToDate.HasValue)
         {
-            // Include entire day
-            var toDateEndOfDay = filter.ToDate.Value.Date.AddDays(1).AddTicks(-1);
-            query = query.Where(o => o.CreatedAt <= toDateEndOfDay);
+            // Include entire day (use < next day for robust filtering)
+            var nextDay = filter.ToDate.Value.Date.AddDays(1);
+            query = query.Where(o => o.CreatedAt < nextDay);
         }
 
         // Get total count before pagination
@@ -312,9 +312,9 @@ public class OrderService : IOrderService
 
         if (filter.ToDate.HasValue)
         {
-            // Include entire day
-            var toDateEndOfDay = filter.ToDate.Value.Date.AddDays(1).AddTicks(-1);
-            query = query.Where(s => s.CreatedAt <= toDateEndOfDay);
+            // Include entire day (use < next day for robust filtering)
+            var nextDay = filter.ToDate.Value.Date.AddDays(1);
+            query = query.Where(s => s.CreatedAt < nextDay);
         }
 
         // Get total count before pagination
@@ -358,6 +358,7 @@ public class OrderService : IOrderService
     {
         var subOrder = await _dbContext.SubOrders
             .Include(s => s.Order)
+                .ThenInclude(o => o!.SubOrders)
             .FirstOrDefaultAsync(s => s.Id == subOrderId && s.StoreId == storeId);
 
         if (subOrder == null)
@@ -400,23 +401,17 @@ public class OrderService : IOrderService
         }
 
         // Check if all SubOrders are completed to update parent Order status
-        var allSubOrders = await _dbContext.SubOrders
-            .Where(s => s.OrderId == subOrder.OrderId)
-            .ToListAsync();
-
-        // Update this subOrder in the list
-        var currentSubOrder = allSubOrders.First(s => s.Id == subOrderId);
-        currentSubOrder.Status = request.Status;
+        var allSubOrders = subOrder.Order!.SubOrders;
 
         // Determine parent order status
         if (allSubOrders.All(s => s.Status == SubOrderStatus.Delivered))
         {
-            subOrder.Order!.Status = OrderStatus.Completed;
+            subOrder.Order.Status = OrderStatus.Completed;
             subOrder.Order.UpdatedAt = DateTime.UtcNow;
         }
         else if (allSubOrders.All(s => s.Status == SubOrderStatus.Cancelled))
         {
-            subOrder.Order!.Status = OrderStatus.Cancelled;
+            subOrder.Order.Status = OrderStatus.Cancelled;
             subOrder.Order.UpdatedAt = DateTime.UtcNow;
         }
 
@@ -460,14 +455,14 @@ public class OrderService : IOrderService
             [SubOrderStatus.Cancelled] = new() { }  // Terminal state - no transitions
         };
 
-        if (!validTransitions.ContainsKey(currentStatus))
+        if (!validTransitions.TryGetValue(currentStatus, out var allowedTransitions))
         {
             return (false, $"Invalid current status: {currentStatus}");
         }
 
-        if (!validTransitions[currentStatus].Contains(newStatus))
+        if (!allowedTransitions.Contains(newStatus))
         {
-            return (false, $"Cannot transition from {currentStatus} to {newStatus}. Allowed transitions: {string.Join(", ", validTransitions[currentStatus])}");
+            return (false, $"Cannot transition from {currentStatus} to {newStatus}. Allowed transitions: {string.Join(", ", allowedTransitions)}");
         }
 
         return (true, null);

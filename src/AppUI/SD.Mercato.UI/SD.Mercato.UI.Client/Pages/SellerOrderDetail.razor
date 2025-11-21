@@ -81,7 +81,9 @@
                                     disabled="@isUpdatingStatus">
                                 @if (isUpdatingStatus)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
+                                        <span class="visually-hidden">Updating...</span>
+                                    </span>
                                 }
                                 <i class="bi bi-box-seam me-2"></i> Mark as Shipped
                             </button>
@@ -95,7 +97,9 @@
                                     disabled="@isUpdatingStatus">
                                 @if (isUpdatingStatus)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
+                                        <span class="visually-hidden">Updating...</span>
+                                    </span>
                                 }
                                 <i class="bi bi-check-circle me-2"></i> Mark as Delivered
                             </button>
@@ -109,7 +113,9 @@
                                     disabled="@isUpdatingStatus">
                                 @if (isUpdatingStatus)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-label="Updating status">
+                                        <span class="visually-hidden">Updating...</span>
+                                    </span>
                                 }
                                 <i class="bi bi-x-circle me-2"></i> Cancel Order
                             </button>
@@ -281,30 +287,46 @@
         statusUpdateSuccess = null;
         isUpdatingStatus = true;
 
-        var request = new UpdateSubOrderStatusRequest
+        try
         {
-            Status = newStatus,
-            TrackingNumber = newStatus == "Shipped" ? trackingNumber : null
-        };
-
-        var result = await SellerOrderService.UpdateSubOrderStatusAsync(SubOrderId, request);
-        
-        isUpdatingStatus = false;
-
-        if (result != null)
-        {
-            subOrder = result;
-            statusUpdateSuccess = $"Order status successfully updated to {newStatus}.";
-            
-            // Clear tracking number field after successful shipment
-            if (newStatus == "Shipped")
+            var request = new UpdateSubOrderStatusRequest
             {
-                trackingNumber = result.TrackingNumber;
+                Status = newStatus,
+                TrackingNumber = newStatus == "Shipped" ? trackingNumber : null
+            };
+
+            var result = await SellerOrderService.UpdateSubOrderStatusAsync(SubOrderId, request);
+            
+            isUpdatingStatus = false;
+
+            if (result != null)
+            {
+                subOrder = result;
+                statusUpdateSuccess = $"Order status successfully updated to {newStatus}.";
+                
+                // Clear tracking number field after successful shipment
+                if (newStatus == "Shipped")
+                {
+                    trackingNumber = result.TrackingNumber;
+                }
+            }
+            else
+            {
+                statusUpdateError = "Failed to update order status. Please try again.";
             }
         }
-        else
+        catch (HttpRequestException ex)
         {
-            statusUpdateError = "Failed to update order status. Please try again.";
+            isUpdatingStatus = false;
+            statusUpdateError = !string.IsNullOrWhiteSpace(ex.Message)
+                ? ex.Message
+                : "Failed to update order status. Please try again.";
+        }
+        catch (Exception ex)
+        {
+            isUpdatingStatus = false;
+            statusUpdateError = "An unexpected error occurred. Please try again.";
+            Console.WriteLine($"Error updating status: {ex.Message}");
         }
     }
 

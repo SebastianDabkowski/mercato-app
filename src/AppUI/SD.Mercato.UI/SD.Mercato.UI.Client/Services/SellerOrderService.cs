@@ -21,7 +21,7 @@ public class SubOrderListResponse
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 }
 
 /// <summary>
@@ -33,7 +33,7 @@ public class OrderListResponse
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 }
 
 /// <summary>
@@ -126,12 +126,31 @@ public class SellerOrderService : ISellerOrderService
 
             var errorContent = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"Update status failed: {response.StatusCode} - {errorContent}");
-            return null;
+            
+            // Try to extract error message from response
+            try
+            {
+                var errorObj = System.Text.Json.JsonDocument.Parse(errorContent);
+                if (errorObj.RootElement.TryGetProperty("message", out var messageElement))
+                {
+                    throw new HttpRequestException(messageElement.GetString());
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // If JSON parsing fails, throw with raw error content if it's short enough
+                if (errorContent.Length < 200)
+                {
+                    throw new HttpRequestException(errorContent);
+                }
+            }
+            
+            throw new HttpRequestException($"Update failed with status {response.StatusCode}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error updating order status: {ex.Message}");
-            return null;
+            throw;
         }
     }
 }

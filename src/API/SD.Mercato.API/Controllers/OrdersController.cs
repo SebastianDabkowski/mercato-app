@@ -28,6 +28,7 @@ public class OrdersController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(OrderListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<OrderListResponse>> GetUserOrders(
         [FromQuery] string? status = null,
@@ -40,6 +41,27 @@ public class OrdersController : ControllerBase
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        // Validate pagination parameters
+        if (page < 1)
+        {
+            return BadRequest(new { message = "Page number must be at least 1" });
+        }
+
+        if (pageSize < 1 || pageSize > 100)
+        {
+            return BadRequest(new { message = "Page size must be between 1 and 100" });
+        }
+
+        // Validate status filter
+        if (!string.IsNullOrEmpty(status))
+        {
+            var validStatuses = new[] { "Pending", "Processing", "Completed", "Cancelled" };
+            if (!validStatuses.Contains(status))
+            {
+                return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", validStatuses)}" });
+            }
         }
 
         var filter = new OrderFilterRequest

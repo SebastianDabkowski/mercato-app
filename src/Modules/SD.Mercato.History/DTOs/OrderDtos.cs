@@ -245,7 +245,7 @@ public class UpdateSubOrderStatusRequest
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
-    /// Tracking number (required when status is "Shipped").
+    /// Tracking number (recommended when status is "Shipped").
     /// </summary>
     public string? TrackingNumber { get; set; }
 
@@ -265,7 +265,7 @@ public class SubOrderListResponse
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 }
 
 /// <summary>
@@ -308,5 +308,5 @@ public class OrderListResponse
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 }
