@@ -236,6 +236,22 @@ public class PaymentService : IPaymentService
         decimal totalOrderAmount,
         decimal totalProcessingFee)
     {
+        // Validate inputs to prevent division by zero and negative values
+        if (totalOrderAmount <= 0)
+        {
+            throw new ArgumentException("Total order amount must be greater than zero", nameof(totalOrderAmount));
+        }
+
+        if (productTotal < 0 || shippingCost < 0)
+        {
+            throw new ArgumentException("Product total and shipping cost cannot be negative");
+        }
+
+        if (commissionRate < 0 || commissionRate > 1)
+        {
+            throw new ArgumentException("Commission rate must be between 0 and 1", nameof(commissionRate));
+        }
+
         var total = productTotal + shippingCost;
         
         // Commission applied only to product total, not shipping
@@ -399,10 +415,13 @@ public class PaymentService : IPaymentService
             }
 
             // Get all released SubOrderPayments for this store that haven't been paid out
+            // TODO: For stores with very large numbers of SubOrders, implement pagination
+            // or batch processing to avoid loading too many records in memory
             var subOrderPayments = await _context.SubOrderPayments
                 .Where(sp => sp.StoreId == request.StoreId 
                     && sp.PayoutStatus == SubOrderPayoutStatus.Released)
-                .Take(100) // Limit for safety
+                .OrderBy(sp => sp.CreatedAt)
+                .Take(100) // Limit for safety - make configurable in production
                 .ToListAsync();
 
             var totalAmount = subOrderPayments.Sum(sp => sp.SellerNetAmount);
@@ -417,6 +436,8 @@ public class PaymentService : IPaymentService
             }
 
             // Create payout record
+            // TODO: Consider using a separate PayoutSubOrder junction table instead of comma-separated IDs
+            // for better data integrity and querying capabilities
             var payout = new Payout
             {
                 Id = Guid.NewGuid(),
