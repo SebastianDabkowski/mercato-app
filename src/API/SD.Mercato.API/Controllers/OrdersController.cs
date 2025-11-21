@@ -24,12 +24,17 @@ public class OrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all orders for the authenticated user.
+    /// Get all orders for the authenticated user with optional filtering.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(List<OrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OrderListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<List<OrderDto>>> GetUserOrders()
+    public async Task<ActionResult<OrderListResponse>> GetUserOrders(
+        [FromQuery] string? status = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -37,8 +42,17 @@ public class OrdersController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var orders = await _orderService.GetUserOrdersAsync(userId);
-        return Ok(orders);
+        var filter = new OrderFilterRequest
+        {
+            Status = status,
+            FromDate = fromDate,
+            ToDate = toDate,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        var result = await _orderService.GetUserOrdersAsync(userId, filter);
+        return Ok(result);
     }
 
     /// <summary>

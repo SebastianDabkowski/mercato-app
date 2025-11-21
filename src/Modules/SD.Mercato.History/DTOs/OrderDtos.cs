@@ -97,6 +97,8 @@ public class SubOrderDto
 {
     public Guid Id { get; set; }
     public string SubOrderNumber { get; set; } = string.Empty;
+    public Guid OrderId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
     public Guid StoreId { get; set; }
     public string StoreName { get; set; } = string.Empty;
     public decimal ProductsTotal { get; set; }
@@ -109,6 +111,17 @@ public class SubOrderDto
     public DateTime CreatedAt { get; set; }
     public DateTime? ShippedAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
+    
+    // Delivery information (for seller view)
+    public string? DeliveryRecipientName { get; set; }
+    public string? DeliveryAddressLine1 { get; set; }
+    public string? DeliveryAddressLine2 { get; set; }
+    public string? DeliveryCity { get; set; }
+    public string? DeliveryState { get; set; }
+    public string? DeliveryPostalCode { get; set; }
+    public string? DeliveryCountry { get; set; }
+    public string? BuyerEmail { get; set; }
+    public string? BuyerPhone { get; set; }
 }
 
 /// <summary>
@@ -187,4 +200,113 @@ public class CalculateShippingResponse
 {
     public Dictionary<Guid, decimal> ShippingCostsByStore { get; set; } = new();
     public decimal TotalShippingCost { get; set; }
+}
+
+/// <summary>
+/// Request model for filtering SubOrders (seller side).
+/// </summary>
+public class SubOrderFilterRequest
+{
+    /// <summary>
+    /// Filter by SubOrder status (e.g., "Processing", "Shipped").
+    /// </summary>
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// Filter by orders created on or after this date.
+    /// </summary>
+    public DateTime? FromDate { get; set; }
+
+    /// <summary>
+    /// Filter by orders created on or before this date.
+    /// </summary>
+    public DateTime? ToDate { get; set; }
+
+    /// <summary>
+    /// Page number for pagination (1-based).
+    /// </summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>
+    /// Number of items per page.
+    /// </summary>
+    public int PageSize { get; set; } = 20;
+}
+
+/// <summary>
+/// Request model for updating SubOrder status.
+/// </summary>
+public class UpdateSubOrderStatusRequest
+{
+    /// <summary>
+    /// New status for the SubOrder.
+    /// </summary>
+    [Required(ErrorMessage = "Status is required")]
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Tracking number (required when status is "Shipped").
+    /// </summary>
+    public string? TrackingNumber { get; set; }
+
+    /// <summary>
+    /// Optional notes for the status update.
+    /// </summary>
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Response model for SubOrder list with pagination info.
+/// </summary>
+public class SubOrderListResponse
+{
+    public List<SubOrderDto> SubOrders { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+}
+
+/// <summary>
+/// Request model for filtering Orders (buyer side).
+/// </summary>
+public class OrderFilterRequest
+{
+    /// <summary>
+    /// Filter by Order status.
+    /// </summary>
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// Filter by orders created on or after this date.
+    /// </summary>
+    public DateTime? FromDate { get; set; }
+
+    /// <summary>
+    /// Filter by orders created on or before this date.
+    /// </summary>
+    public DateTime? ToDate { get; set; }
+
+    /// <summary>
+    /// Page number for pagination (1-based).
+    /// </summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>
+    /// Number of items per page.
+    /// </summary>
+    public int PageSize { get; set; } = 20;
+}
+
+/// <summary>
+/// Response model for Order list with pagination info.
+/// </summary>
+public class OrderListResponse
+{
+    public List<OrderDto> Orders { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 }
