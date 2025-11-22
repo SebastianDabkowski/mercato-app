@@ -1,0 +1,190 @@
+@using SD.Mercato.UI.Client.Services
+@inject ICaseService CaseService
+
+<!-- Modal for creating a return request or complaint -->
+<div class="modal fade @(showModal ? "show d-block" : "")" tabindex="-1" style="@(showModal ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@(isReturn ? "Request Return" : "Submit Complaint")</h5>
+                <button type="button" class="btn-close" @onclick="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">@errorMessage</div>
+                }
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="alert alert-success">@successMessage</div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Reason</label>
+                    <select class="form-select" @bind="reason">
+                        <option value="">Select a reason...</option>
+                        @if (isReturn)
+                        {
+                            <option value="Defective">Defective</option>
+                            <option value="Wrong item">Wrong item</option>
+                            <option value="Not as described">Not as described</option>
+                            <option value="Size/fit issue">Size/fit issue</option>
+                            <option value="Changed mind">Changed mind</option>
+                            <option value="Other">Other</option>
+                        }
+                        else
+                        {
+                            <option value="Late delivery">Late delivery</option>
+                            <option value="Poor quality">Poor quality</option>
+                            <option value="Damaged packaging">Damaged packaging</option>
+                            <option value="Missing items">Missing items</option>
+                            <option value="Poor customer service">Poor customer service</option>
+                            <option value="Other">Other</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="4" @bind="description" placeholder="Please provide details about your @(isReturn ? "return request" : "complaint")..."></textarea>
+                </div>
+
+                @if (SubOrderItems != null && SubOrderItems.Any() && SubOrderItems.Count > 1)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Specific Item (Optional)</label>
+                        <select class="form-select" @bind="selectedItemId">
+                            <option value="">All items in this order</option>
+                            @foreach (var item in SubOrderItems)
+                            {
+                                <option value="@item.Id">@item.ProductTitle (Qty: @item.Quantity)</option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="Close" disabled="@isSubmitting">Cancel</button>
+                <button type="button" class="btn btn-primary" @onclick="Submit" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Submit @(isReturn ? "Return Request" : "Complaint")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool ShowModal { get; set; }
+
+    [Parameter]
+    public bool IsReturn { get; set; }
+
+    [Parameter]
+    public Guid SubOrderId { get; set; }
+
+    [Parameter]
+    public List<SubOrderItemDto>? SubOrderItems { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnSuccess { get; set; }
+
+    private bool showModal => ShowModal;
+    private bool isReturn => IsReturn;
+    private string reason = "";
+    private string description = "";
+    private string selectedItemId = "";
+    private bool isSubmitting = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private async Task Submit()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            errorMessage = "Please select a reason";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            errorMessage = "Please provide a description";
+            return;
+        }
+
+        isSubmitting = true;
+
+        Guid? itemId = null;
+        if (!string.IsNullOrEmpty(selectedItemId) && Guid.TryParse(selectedItemId, out var parsedId))
+        {
+            itemId = parsedId;
+        }
+
+        CreateCaseResponseDto? response = null;
+
+        if (isReturn)
+        {
+            var request = new CreateReturnRequestDto
+            {
+                SubOrderId = SubOrderId,
+                SubOrderItemId = itemId,
+                Reason = reason,
+                Description = description
+            };
+            response = await CaseService.CreateReturnRequestAsync(request);
+        }
+        else
+        {
+            var request = new CreateComplaintRequestDto
+            {
+                SubOrderId = SubOrderId,
+                SubOrderItemId = itemId,
+                Reason = reason,
+                Description = description
+            };
+            response = await CaseService.CreateComplaintAsync(request);
+        }
+
+        isSubmitting = false;
+
+        if (response != null)
+        {
+            successMessage = $"Case #{response.CaseNumber} created successfully";
+            
+            // Reset form
+            reason = "";
+            description = "";
+            selectedItemId = "";
+            
+            // Wait a moment to show success message
+            await Task.Delay(1500);
+            
+            await OnSuccess.InvokeAsync();
+            await Close();
+        }
+        else
+        {
+            errorMessage = "Failed to create case. Please try again.";
+        }
+    }
+
+    private async Task Close()
+    {
+        errorMessage = null;
+        successMessage = null;
+        reason = "";
+        description = "";
+        selectedItemId = "";
+        await OnClose.InvokeAsync();
+    }
+}

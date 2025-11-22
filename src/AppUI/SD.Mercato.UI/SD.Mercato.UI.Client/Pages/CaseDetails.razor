@@ -1,0 +1,244 @@
+@page "/cases/{CaseId:guid}"
+@using SD.Mercato.UI.Client.Services
+@inject ICaseService CaseService
+@inject NavigationManager Navigation
+
+<PageTitle>Case Details - Mercato</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (caseDetails == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Case not found</h4>
+            <p>The requested case could not be found.</p>
+            <a href="/my-cases" class="btn btn-primary">Back to My Cases</a>
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <a href="/my-cases" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to My Cases
+            </a>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h3 class="mb-0">Case #@caseDetails.CaseNumber</h3>
+                        <small class="text-muted">Created on @caseDetails.CreatedAt.ToString("MMMM dd, yyyy HH:mm")</small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <span class="badge bg-@GetTypeBadgeClass(caseDetails.CaseType) fs-6">
+                            @caseDetails.CaseType
+                        </span>
+                        <span class="badge bg-@GetStatusBadgeClass(caseDetails.Status) fs-6 ms-2">
+                            @caseDetails.Status
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Order Information</h5>
+                        <p>
+                            <strong>Order Number:</strong> @caseDetails.OrderNumber<br />
+                            <strong>SubOrder Number:</strong> @caseDetails.SubOrderNumber<br />
+                            <strong>Seller:</strong> @caseDetails.StoreName
+                        </p>
+
+                        @if (!string.IsNullOrEmpty(caseDetails.ProductTitle))
+                        {
+                            <p>
+                                <strong>Product:</strong> @caseDetails.ProductTitle
+                            </p>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Case Information</h5>
+                        <p>
+                            <strong>Reason:</strong> @caseDetails.Reason
+                        </p>
+                        @if (caseDetails.UpdatedAt.HasValue)
+                        {
+                            <p>
+                                <strong>Last Updated:</strong> @caseDetails.UpdatedAt.Value.ToString("MMMM dd, yyyy HH:mm")
+                            </p>
+                        }
+                        @if (caseDetails.ResolvedAt.HasValue)
+                        {
+                            <p>
+                                <strong>Resolved:</strong> @caseDetails.ResolvedAt.Value.ToString("MMMM dd, yyyy HH:mm")
+                            </p>
+                        }
+                    </div>
+                </div>
+
+                <hr />
+
+                <h5>Description</h5>
+                <p class="bg-light p-3 rounded">@caseDetails.Description</p>
+
+                @if (!string.IsNullOrEmpty(caseDetails.Resolution))
+                {
+                    <h5 class="mt-3">Resolution</h5>
+                    <div class="alert alert-success">
+                        @caseDetails.Resolution
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Messages Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Messages (@caseDetails.Messages.Count)</h5>
+            </div>
+            <div class="card-body">
+                @if (caseDetails.Messages.Any())
+                {
+                    <div style="max-height: 400px; overflow-y: auto;" class="mb-3">
+                        @foreach (var msg in caseDetails.Messages)
+                        {
+                            <div class="card mb-2 @(msg.SenderRole == "Buyer" ? "border-primary" : "border-secondary")">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>
+                                            @msg.SenderName 
+                                            <span class="badge bg-@(msg.SenderRole == "Buyer" ? "primary" : msg.SenderRole == "Seller" ? "info" : "warning") ms-2">
+                                                @msg.SenderRole
+                                            </span>
+                                        </strong>
+                                        <small class="text-muted">@msg.CreatedAt.ToString("MMM dd, yyyy HH:mm")</small>
+                                    </div>
+                                    <p class="mb-0 mt-2">@msg.Message</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No messages yet.</p>
+                }
+
+                @if (caseDetails.Status != "Resolved")
+                {
+                    <hr />
+                    <h6>Add a Message</h6>
+                    <div class="mb-3">
+                        <textarea class="form-control" rows="3" @bind="newMessage" placeholder="Type your message here..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" @onclick="AddMessage" disabled="@isSendingMessage">
+                        @if (isSendingMessage)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Send Message
+                    </button>
+                    
+                    @if (!string.IsNullOrEmpty(messageError))
+                    {
+                        <div class="alert alert-danger mt-2">@messageError</div>
+                    }
+                    @if (!string.IsNullOrEmpty(messageSuccess))
+                    {
+                        <div class="alert alert-success mt-2">@messageSuccess</div>
+                    }
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        This case is resolved and no longer accepts new messages.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid CaseId { get; set; }
+
+    private CaseDto? caseDetails;
+    private bool isLoading = true;
+    private string newMessage = "";
+    private bool isSendingMessage = false;
+    private string? messageError;
+    private string? messageSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCaseDetails();
+    }
+
+    private async Task LoadCaseDetails()
+    {
+        isLoading = true;
+        caseDetails = await CaseService.GetCaseByIdAsync(CaseId);
+        isLoading = false;
+    }
+
+    private async Task AddMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessage))
+        {
+            messageError = "Please enter a message";
+            return;
+        }
+
+        messageError = null;
+        messageSuccess = null;
+        isSendingMessage = true;
+
+        var request = new AddCaseMessageRequestDto { Message = newMessage };
+        var success = await CaseService.AddCaseMessageAsync(CaseId, request);
+
+        isSendingMessage = false;
+
+        if (success)
+        {
+            messageSuccess = "Message sent successfully";
+            newMessage = "";
+            await LoadCaseDetails(); // Reload to show the new message
+        }
+        else
+        {
+            messageError = "Failed to send message. Please try again.";
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "New" => "primary",
+            "In Review" => "info",
+            "Accepted" => "success",
+            "Rejected" => "danger",
+            "Resolved" => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    private string GetTypeBadgeClass(string type)
+    {
+        return type switch
+        {
+            "Return" => "warning",
+            "Complaint" => "danger",
+            _ => "secondary"
+        };
+    }
+}

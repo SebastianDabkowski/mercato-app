@@ -1,5 +1,6 @@
 @page "/orders"
 @using SD.Mercato.UI.Client.Services
+@using SD.Mercato.UI.Client.Components
 @inject IOrderService OrderService
 @inject NavigationManager Navigation
 
@@ -146,6 +147,19 @@
                                             }
                                         </div>
                                     }
+
+                                    @* Show return/complaint buttons for delivered/shipped orders *@
+                                    @if (subOrder.Status == "Delivered" || subOrder.Status == "Shipped")
+                                    {
+                                        <div class="mt-2">
+                                            <button class="btn btn-outline-warning btn-sm me-2" @onclick="@(() => ShowReturnModal(subOrder))">
+                                                <i class="bi bi-arrow-return-left"></i> Request Return
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @onclick="@(() => ShowComplaintModal(subOrder))">
+                                                <i class="bi bi-exclamation-triangle"></i> Report Issue
+                                            </button>
+                                        </div>
+                                    }
                                 </div>
                             }
                         </div>
@@ -208,6 +222,23 @@
     }
 </div>
 
+<!-- Case creation modals -->
+<CreateCaseModal 
+    ShowModal="@showReturnModal" 
+    IsReturn="true"
+    SubOrderId="@selectedSubOrderId"
+    SubOrderItems="@selectedSubOrderItems"
+    OnClose="@(() => showReturnModal = false)"
+    OnSuccess="@OnCaseCreated" />
+
+<CreateCaseModal 
+    ShowModal="@showComplaintModal" 
+    IsReturn="false"
+    SubOrderId="@selectedSubOrderId"
+    SubOrderItems="@selectedSubOrderItems"
+    OnClose="@(() => showComplaintModal = false)"
+    OnSuccess="@OnCaseCreated" />
+
 @code {
     private OrderListResponse? response;
     private bool isLoading = true;
@@ -217,6 +248,11 @@
     private DateTime? toDate;
     private int currentPage = 1;
     private readonly int pageSize = 10;
+
+    private bool showReturnModal = false;
+    private bool showComplaintModal = false;
+    private Guid selectedSubOrderId = Guid.Empty;
+    private List<SubOrderItemDto>? selectedSubOrderItems;
 
     protected override async Task OnInitializedAsync()
     {
@@ -265,6 +301,28 @@
     private void ViewOrderDetails(Guid orderId)
     {
         Navigation.NavigateTo($"/orders/{orderId}");
+    }
+
+    private void ShowReturnModal(SubOrderDto subOrder)
+    {
+        selectedSubOrderId = subOrder.Id;
+        selectedSubOrderItems = subOrder.Items;
+        showReturnModal = true;
+    }
+
+    private void ShowComplaintModal(SubOrderDto subOrder)
+    {
+        selectedSubOrderId = subOrder.Id;
+        selectedSubOrderItems = subOrder.Items;
+        showComplaintModal = true;
+    }
+
+    private void OnCaseCreated()
+    {
+        // Close modals and optionally show a success notification
+        showReturnModal = false;
+        showComplaintModal = false;
+        // User can navigate to /my-cases to see their created case
     }
 
     private string GetStatusBadgeClass(string status)

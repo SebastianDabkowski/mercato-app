@@ -1,0 +1,346 @@
+@page "/seller/cases"
+@using SD.Mercato.UI.Client.Services
+@inject ICaseService CaseService
+@inject NavigationManager Navigation
+
+<PageTitle>Customer Cases - Mercato Seller</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Customer Cases (Returns & Complaints)</h1>
+
+    <div class="alert alert-warning">
+        <strong>Note:</strong> To use this feature, you need to specify your Store ID in the URL. 
+        Navigate to <code>/seller/cases?storeId=YOUR_STORE_ID</code>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (storeId == Guid.Empty)
+    {
+        <div class="alert alert-info">
+            <h4>Store ID Required</h4>
+            <p>Please provide your Store ID as a query parameter to view cases.</p>
+            <p>Example: <code>/seller/cases?storeId=your-store-guid-here</code></p>
+        </div>
+    }
+    else
+    {
+        <!-- Filters -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="statusFilter" class="form-label">Status</label>
+                        <select id="statusFilter" class="form-select" @bind="selectedStatus" @bind:after="ApplyFilters">
+                            <option value="">All Statuses</option>
+                            <option value="New">New</option>
+                            <option value="In Review">In Review</option>
+                            <option value="Accepted">Accepted</option>
+                            <option value="Rejected">Rejected</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="typeFilter" class="form-label">Type</label>
+                        <select id="typeFilter" class="form-select" @bind="selectedType" @bind:after="ApplyFilters">
+                            <option value="">All Types</option>
+                            <option value="Return">Return</option>
+                            <option value="Complaint">Complaint</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fromDate" class="form-label">From Date</label>
+                        <input type="date" id="fromDate" class="form-control" @bind="fromDate" @bind:after="ApplyFilters" />
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button class="btn btn-secondary w-100" @onclick="ClearFilters">
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (response == null || response.Cases == null || !response.Cases.Any())
+        {
+            <div class="alert alert-info">
+                <h4>No cases found</h4>
+                <p>@(string.IsNullOrEmpty(selectedStatus) && string.IsNullOrEmpty(selectedType) && !fromDate.HasValue 
+                    ? "No customers have created cases for your store yet." 
+                    : "No cases match your current filters.")</p>
+                @if (!string.IsNullOrEmpty(selectedStatus) || !string.IsNullOrEmpty(selectedType) || fromDate.HasValue)
+                {
+                    <button class="btn btn-primary" @onclick="ClearFilters">Clear Filters</button>
+                }
+            </div>
+        }
+        else
+        {
+            @foreach (var caseItem in response.Cases)
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h5 class="mb-0">
+                                    Case #@caseItem.CaseNumber
+                                </h5>
+                                <small class="text-muted">Created on @caseItem.CreatedAt.ToString("MMM dd, yyyy")</small>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <span class="badge bg-@GetTypeBadgeClass(caseItem.CaseType)">
+                                    @caseItem.CaseType
+                                </span>
+                                <span class="badge bg-@GetStatusBadgeClass(caseItem.Status) ms-2">
+                                    @caseItem.Status
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6>Case Details</h6>
+                                <p class="mb-2">
+                                    <strong>Order:</strong> @caseItem.OrderNumber<br />
+                                    <strong>SubOrder:</strong> @caseItem.SubOrderNumber<br />
+                                    @if (!string.IsNullOrEmpty(caseItem.ProductTitle))
+                                    {
+                                        <strong>Product:</strong> @caseItem.ProductTitle<br />
+                                    }
+                                    <strong>Reason:</strong> @caseItem.Reason
+                                </p>
+                                
+                                <h6 class="mt-3">Description</h6>
+                                <p>@caseItem.Description</p>
+
+                                @if (!string.IsNullOrEmpty(caseItem.Resolution))
+                                {
+                                    <h6 class="mt-3">Resolution</h6>
+                                    <div class="alert alert-success">
+                                        @caseItem.Resolution
+                                    </div>
+                                }
+
+                                @if (caseItem.Messages.Any())
+                                {
+                                    <h6 class="mt-3">Recent Messages (@caseItem.Messages.Count)</h6>
+                                    <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                                        @foreach (var msg in caseItem.Messages.TakeLast(3))
+                                        {
+                                            <div class="mb-2 pb-2 border-bottom">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>@msg.SenderName (@msg.SenderRole)</strong>
+                                                    <small class="text-muted">@msg.CreatedAt.ToString("MMM dd, HH:mm")</small>
+                                                </div>
+                                                <p class="mb-0 small">@msg.Message</p>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Actions</h6>
+                                <button class="btn btn-primary btn-sm w-100 mb-2" @onclick="@(() => ViewCaseDetails(caseItem.Id))">
+                                    View Full Details
+                                </button>
+                                
+                                @if (caseItem.Status != "Resolved")
+                                {
+                                    <div class="dropdown mb-2">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                                            Update Status
+                                        </button>
+                                        <ul class="dropdown-menu w-100">
+                                            @if (caseItem.Status != "In Review")
+                                            {
+                                                <li><a class="dropdown-item" @onclick="@(() => UpdateStatus(caseItem.Id, "In Review"))">Mark as In Review</a></li>
+                                            }
+                                            @if (caseItem.Status != "Accepted")
+                                            {
+                                                <li><a class="dropdown-item" @onclick="@(() => UpdateStatus(caseItem.Id, "Accepted"))">Accept</a></li>
+                                            }
+                                            @if (caseItem.Status != "Rejected")
+                                            {
+                                                <li><a class="dropdown-item" @onclick="@(() => UpdateStatus(caseItem.Id, "Rejected"))">Reject</a></li>
+                                            }
+                                            <li><a class="dropdown-item" @onclick="@(() => ResolveCase(caseItem.Id))">Resolve Case</a></li>
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            <!-- Pagination -->
+            @if (response.TotalPages > 1)
+            {
+                <nav aria-label="Case list pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" @onclick="@(() => GoToPage(currentPage - 1))" href="javascript:void(0)">Previous</a>
+                        </li>
+                        
+                        @for (int i = 1; i <= response.TotalPages; i++)
+                        {
+                            var pageNum = i;
+                            <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                                <a class="page-link" @onclick="@(() => GoToPage(pageNum))" href="javascript:void(0)">@pageNum</a>
+                            </li>
+                        }
+                        
+                        <li class="page-item @(currentPage == response.TotalPages ? "disabled" : "")">
+                            <a class="page-link" @onclick="@(() => GoToPage(currentPage + 1))" href="javascript:void(0)">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+                
+                <div class="text-center text-muted mb-3">
+                    Showing @response.Cases.Count of @response.TotalCount cases
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid? StoreId { get; set; }
+
+    private Guid storeId => StoreId ?? Guid.Empty;
+    private CaseListResponseDto? response;
+    private bool isLoading = true;
+    
+    private string selectedStatus = "";
+    private string selectedType = "";
+    private DateTime? fromDate;
+    private int currentPage = 1;
+    private readonly int pageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (storeId != Guid.Empty)
+        {
+            await LoadCases();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCases()
+    {
+        if (storeId == Guid.Empty)
+            return;
+
+        isLoading = true;
+        
+        response = await CaseService.GetSellerCasesAsync(
+            storeId,
+            string.IsNullOrEmpty(selectedStatus) ? null : selectedStatus,
+            string.IsNullOrEmpty(selectedType) ? null : selectedType,
+            fromDate,
+            null,
+            currentPage,
+            pageSize
+        );
+        
+        isLoading = false;
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadCases();
+    }
+
+    private async Task ClearFilters()
+    {
+        selectedStatus = "";
+        selectedType = "";
+        fromDate = null;
+        currentPage = 1;
+        await LoadCases();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || (response != null && page > response.TotalPages))
+            return;
+        
+        currentPage = page;
+        await LoadCases();
+    }
+
+    private void ViewCaseDetails(Guid caseId)
+    {
+        Navigation.NavigateTo($"/seller/cases/{caseId}");
+    }
+
+    private async Task UpdateStatus(Guid caseId, string newStatus)
+    {
+        var request = new UpdateCaseStatusRequestDto { Status = newStatus };
+        var success = await CaseService.UpdateCaseStatusAsync(caseId, request);
+        
+        if (success)
+        {
+            await LoadCases(); // Reload the list
+        }
+    }
+
+    private async Task ResolveCase(Guid caseId)
+    {
+        // TODO: Show modal to enter resolution notes
+        var request = new UpdateCaseStatusRequestDto 
+        { 
+            Status = "Resolved",
+            Resolution = "Case resolved by seller"
+        };
+        var success = await CaseService.UpdateCaseStatusAsync(caseId, request);
+        
+        if (success)
+        {
+            await LoadCases();
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "New" => "primary",
+            "In Review" => "info",
+            "Accepted" => "success",
+            "Rejected" => "danger",
+            "Resolved" => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    private string GetTypeBadgeClass(string type)
+    {
+        return type switch
+        {
+            "Return" => "warning",
+            "Complaint" => "danger",
+            _ => "secondary"
+        };
+    }
+}
