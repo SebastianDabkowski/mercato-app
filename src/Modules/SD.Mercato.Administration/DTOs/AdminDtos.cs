@@ -51,6 +51,17 @@ public class AdminUserSearchRequest
     public bool? IsEmailVerified { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+
+    /// <summary>
+    /// Validates and normalizes pagination parameters.
+    /// Ensures PageNumber >= 1, PageSize between 1 and 100.
+    /// </summary>
+    public void ValidateAndNormalize()
+    {
+        if (PageNumber < 1) PageNumber = 1;
+        if (PageSize < 1) PageSize = 20;
+        if (PageSize > 100) PageSize = 100;
+    }
 }
 
 /// <summary>
@@ -171,6 +182,17 @@ public class AdminStoreSearchRequest
     public bool? IsVerified { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+
+    /// <summary>
+    /// Validates and normalizes pagination parameters.
+    /// Ensures PageNumber >= 1, PageSize between 1 and 100.
+    /// </summary>
+    public void ValidateAndNormalize()
+    {
+        if (PageNumber < 1) PageNumber = 1;
+        if (PageSize < 1) PageSize = 20;
+        if (PageSize > 100) PageSize = 100;
+    }
 }
 
 /// <summary>
@@ -202,12 +224,20 @@ public class UpdateStoreStatusRequest
 /// </summary>
 public class UpdateStoreCommissionRequest
 {
+    /// <summary>
+    /// Commission rate as a percentage (0-100). For example, enter 15 for 15%.
+    /// </summary>
     [Required]
-    [Range(0, 1, ErrorMessage = "Commission rate must be between 0 and 1")]
+    [Range(0, 100, ErrorMessage = "Commission rate must be between 0 and 100 (as a percentage)")]
     public decimal CommissionRate { get; set; }
 
     [MaxLength(500)]
     public string? Reason { get; set; }
+
+    /// <summary>
+    /// Gets the commission rate as a decimal (0.0–1.0).
+    /// </summary>
+    public decimal CommissionRateDecimal => CommissionRate / 100m;
 }
 
 /// <summary>
@@ -297,6 +327,17 @@ public class AuditLogSearchRequest
     public DateTime? ToDate { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 50;
+
+    /// <summary>
+    /// Validates and normalizes pagination parameters.
+    /// Ensures PageNumber >= 1, PageSize between 1 and 100.
+    /// </summary>
+    public void ValidateAndNormalize()
+    {
+        if (PageNumber < 1) PageNumber = 1;
+        if (PageSize < 1) PageSize = 50;
+        if (PageSize > 100) PageSize = 100;
+    }
 }
 
 /// <summary>

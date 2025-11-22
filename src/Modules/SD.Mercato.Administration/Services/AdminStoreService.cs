@@ -6,6 +6,7 @@ using SD.Mercato.SellerPanel.Data;
 using SD.Mercato.SellerPanel.Models;
 using SD.Mercato.ProductCatalog.Data;
 using SD.Mercato.History.Data;
+using SD.Mercato.History.Models;
 using SD.Mercato.Users.Models;
 using System.Text.Json;
 
@@ -38,6 +39,9 @@ public class AdminStoreService : IAdminStoreService
 
     public async Task<PaginatedStoresResponse> SearchStoresAsync(AdminStoreSearchRequest request)
     {
+        // Validate pagination parameters
+        request.ValidateAndNormalize();
+
         var query = _sellerContext.Stores.AsQueryable();
 
         // Apply search filter
@@ -72,18 +76,50 @@ public class AdminStoreService : IAdminStoreService
             .Take(request.PageSize)
             .ToListAsync();
 
-        // Map to DTOs with KPIs
-        var storeDtos = new List<AdminStoreListDto>();
-        foreach (var store in stores)
-        {
-            var owner = await _userManager.FindByIdAsync(store.OwnerUserId);
-            var productCount = await _catalogContext.Products.CountAsync(p => p.StoreId == store.Id);
-            var orderCount = await _historyContext.SubOrders.CountAsync(so => so.StoreId == store.Id);
-            var totalRevenue = await _historyContext.SubOrders
-                .Where(so => so.StoreId == store.Id && so.Status == "Completed")
-                .SumAsync(so => so.TotalAmount);
+        // Get all store IDs and owner IDs for batch loading
+        var storeIds = stores.Select(s => s.Id).ToList();
+        var ownerIds = stores.Select(s => s.OwnerUserId).Distinct().ToList();
 
-            storeDtos.Add(new AdminStoreListDto
+        // Batch load product counts
+        var productCounts = await _catalogContext.Products
+            .Where(p => storeIds.Contains(p.StoreId))
+            .GroupBy(p => p.StoreId)
+            .Select(g => new { StoreId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var productCountDict = productCounts.ToDictionary(x => x.StoreId, x => x.Count);
+
+        // Batch load order counts
+        var orderCounts = await _historyContext.SubOrders
+            .Where(so => storeIds.Contains(so.StoreId))
+            .GroupBy(so => so.StoreId)
+            .Select(g => new { StoreId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var orderCountDict = orderCounts.ToDictionary(x => x.StoreId, x => x.Count);
+
+        // Batch load total revenue
+        var revenues = await _historyContext.SubOrders
+            .Where(so => storeIds.Contains(so.StoreId) && so.Status == SubOrderStatus.Completed)
+            .GroupBy(so => so.StoreId)
+            .Select(g => new { StoreId = g.Key, TotalRevenue = g.Sum(so => so.TotalAmount) })
+            .ToListAsync();
+        var revenueDict = revenues.ToDictionary(x => x.StoreId, x => x.TotalRevenue);
+
+        // Batch load owners
+        var owners = new Dictionary<string, ApplicationUser>();
+        foreach (var ownerId in ownerIds)
+        {
+            var owner = await _userManager.FindByIdAsync(ownerId);
+            if (owner != null)
+            {
+                owners[ownerId] = owner;
+            }
+        }
+
+        // Map to DTOs
+        var storeDtos = stores.Select(store =>
+        {
+            var owner = owners.GetValueOrDefault(store.OwnerUserId);
+            return new AdminStoreListDto
             {
                 Id = store.Id,
                 StoreName = store.StoreName,
@@ -94,11 +130,11 @@ public class AdminStoreService : IAdminStoreService
                 IsActive = store.IsActive,
                 IsVerified = store.IsVerified,
                 CreatedAt = store.CreatedAt,
-                ProductCount = productCount,
-                OrderCount = orderCount,
-                TotalRevenue = totalRevenue
-            });
-        }
+                ProductCount = productCountDict.GetValueOrDefault(store.Id, 0),
+                OrderCount = orderCountDict.GetValueOrDefault(store.Id, 0),
+                TotalRevenue = revenueDict.GetValueOrDefault(store.Id, 0)
+            };
+        }).ToList();
 
         return new PaginatedStoresResponse
         {
@@ -121,11 +157,11 @@ public class AdminStoreService : IAdminStoreService
         var productCount = await _catalogContext.Products.CountAsync(p => p.StoreId == storeId);
         
         var totalOrderCount = await _historyContext.SubOrders.CountAsync(so => so.StoreId == storeId);
-        var pendingOrderCount = await _historyContext.SubOrders.CountAsync(so => so.StoreId == storeId && so.Status == "Pending");
-        var completedOrderCount = await _historyContext.SubOrders.CountAsync(so => so.StoreId == storeId && so.Status == "Completed");
+        var pendingOrderCount = await _historyContext.SubOrders.CountAsync(so => so.StoreId == storeId && so.Status == SubOrderStatus.Pending);
+        var completedOrderCount = await _historyContext.SubOrders.CountAsync(so => so.StoreId == storeId && so.Status == SubOrderStatus.Completed);
         
         var totalRevenue = await _historyContext.SubOrders
-            .Where(so => so.StoreId == storeId && so.Status == "Completed")
+            .Where(so => so.StoreId == storeId && so.Status == SubOrderStatus.Completed)
             .SumAsync(so => so.TotalAmount);
 
         var totalCommissionEarned = totalRevenue * store.CommissionRate;
@@ -241,7 +277,7 @@ public class AdminStoreService : IAdminStoreService
         }
 
         var oldCommissionRate = store.CommissionRate;
-        store.CommissionRate = request.CommissionRate;
+        store.CommissionRate = request.CommissionRateDecimal;
         store.UpdatedAt = DateTime.UtcNow;
 
         await _sellerContext.SaveChangesAsync();
@@ -250,7 +286,7 @@ public class AdminStoreService : IAdminStoreService
         var changes = new
         {
             OldCommissionRate = oldCommissionRate,
-            NewCommissionRate = request.CommissionRate,
+            NewCommissionRate = request.CommissionRateDecimal,
             Reason = request.Reason
         };
 
@@ -260,7 +296,7 @@ public class AdminStoreService : IAdminStoreService
             AuditActions.StoreCommissionChanged,
             EntityTypes.Store,
             storeId.ToString(),
-            $"Store {store.StoreName} commission rate changed from {oldCommissionRate:P2} to {request.CommissionRate:P2} by admin. Reason: {request.Reason ?? "Not specified"}",
+            $"Store {store.StoreName} commission rate changed from {oldCommissionRate:P2} to {request.CommissionRateDecimal:P2} by admin. Reason: {request.Reason ?? "Not specified"}",
             JsonSerializer.Serialize(changes),
             ipAddress);
 

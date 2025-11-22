@@ -130,6 +130,7 @@ public static class SubOrderStatus
     public const string Processing = "Processing";
     public const string Shipped = "Shipped";
     public const string Delivered = "Delivered";
+    public const string Completed = "Completed";
     public const string Cancelled = "Cancelled";
 }
 

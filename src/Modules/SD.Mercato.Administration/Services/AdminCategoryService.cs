@@ -25,34 +25,46 @@ public class AdminCategoryService : IAdminCategoryService
 
     public async Task<List<AdminCategoryDto>> GetAllCategoriesAsync()
     {
+        // Fetch all categories
         var categories = await _catalogContext.Categories
             .OrderBy(c => c.Name)
             .ToListAsync();
 
-        var categoryDtos = new List<AdminCategoryDto>();
-        
-        foreach (var category in categories)
+        // Fetch product counts for all categories in one query
+        var productCounts = await _catalogContext.Products
+            .GroupBy(p => p.CategoryId)
+            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var productCountDict = productCounts.ToDictionary(x => x.CategoryId, x => x.Count);
+
+        // Get all parent category IDs referenced
+        var parentCategoryIds = categories
+            .Where(c => c.ParentCategoryId.HasValue)
+            .Select(c => c.ParentCategoryId!.Value)
+            .Distinct()
+            .ToList();
+
+        // Fetch all parent categories in one query
+        var parentCategories = await _catalogContext.Categories
+            .Where(c => parentCategoryIds.Contains(c.Id))
+            .ToListAsync();
+        var parentCategoryDict = parentCategories.ToDictionary(c => c.Id, c => c.Name);
+
+        // Build DTOs
+        var categoryDtos = categories.Select(category => new AdminCategoryDto
         {
-            var productCount = await _catalogContext.Products
-                .CountAsync(p => p.CategoryId == category.Id);
-
-            var parentCategory = category.ParentCategoryId.HasValue
-                ? await _catalogContext.Categories.FindAsync(category.ParentCategoryId.Value)
-                : null;
-
-            categoryDtos.Add(new AdminCategoryDto
-            {
-                Id = category.Id,
-                Name = category.Name,
-                Description = category.Description,
-                ParentCategoryId = category.ParentCategoryId,
-                ParentCategoryName = parentCategory?.Name,
-                IsActive = category.IsActive,
-                CreatedAt = category.CreatedAt,
-                DefaultCommissionRate = category.DefaultCommissionRate,
-                ProductCount = productCount
-            });
-        }
+            Id = category.Id,
+            Name = category.Name,
+            Description = category.Description,
+            ParentCategoryId = category.ParentCategoryId,
+            ParentCategoryName = category.ParentCategoryId.HasValue
+                ? parentCategoryDict.GetValueOrDefault(category.ParentCategoryId.Value)
+                : null,
+            IsActive = category.IsActive,
+            CreatedAt = category.CreatedAt,
+            DefaultCommissionRate = category.DefaultCommissionRate,
+            ProductCount = productCountDict.GetValueOrDefault(category.Id, 0)
+        }).ToList();
 
         return categoryDtos;
     }
@@ -284,19 +296,26 @@ public class AdminCategoryService : IAdminCategoryService
 
     /// <summary>
     /// Checks if setting a parent would create a circular reference in the category hierarchy.
+    /// This checks both upward (ancestors) and downward (descendants) to ensure no cycles.
     /// </summary>
     private async Task<bool> WouldCreateCircularReferenceAsync(Guid categoryId, Guid proposedParentId)
     {
-        // Traverse up the hierarchy from the proposed parent
-        // If we reach the category we're trying to update, it's circular
+        // First check: traverse up from proposed parent to see if we reach the category
+        // This catches: A -> B, trying to set B -> A
         var currentId = proposedParentId;
-        var visitedIds = new HashSet<Guid> { categoryId };
+        var visitedIds = new HashSet<Guid>();
 
         while (currentId != Guid.Empty)
         {
+            if (currentId == categoryId)
+            {
+                // The proposed parent is a descendant of this category
+                return true;
+            }
+
             if (visitedIds.Contains(currentId))
             {
-                // Found a circular reference
+                // Found a cycle in existing hierarchy (shouldn't happen, but protect against it)
                 return true;
             }
 
@@ -310,6 +329,43 @@ public class AdminCategoryService : IAdminCategoryService
             }
 
             currentId = parent.ParentCategoryId.Value;
+        }
+
+        // Second check: ensure the proposed parent is not a descendant of this category
+        // This is already covered by the check above, but we'll keep it for clarity
+        return await IsDescendantOfAsync(proposedParentId, categoryId);
+    }
+
+    /// <summary>
+    /// Checks if potentialDescendant is a descendant of ancestorId.
+    /// </summary>
+    private async Task<bool> IsDescendantOfAsync(Guid potentialDescendantId, Guid ancestorId)
+    {
+        var currentId = potentialDescendantId;
+        var visitedIds = new HashSet<Guid>();
+
+        while (currentId != Guid.Empty)
+        {
+            if (currentId == ancestorId)
+            {
+                return true;
+            }
+
+            if (visitedIds.Contains(currentId))
+            {
+                // Cycle detected (shouldn't happen in valid data)
+                break;
+            }
+
+            visitedIds.Add(currentId);
+
+            var category = await _catalogContext.Categories.FindAsync(currentId);
+            if (category == null || !category.ParentCategoryId.HasValue)
+            {
+                break;
+            }
+
+            currentId = category.ParentCategoryId.Value;
         }
 
         return false;

@@ -47,6 +47,9 @@ public class AuditLogService : IAuditLogService
 
     public async Task<PaginatedAuditLogsResponse> SearchAuditLogsAsync(AuditLogSearchRequest request)
     {
+        // Validate pagination parameters
+        request.ValidateAndNormalize();
+
         var query = _context.AdminAuditLogs.AsQueryable();
 
         // Apply filters

@@ -25,6 +25,9 @@ public class AdminUserService : IAdminUserService
 
     public async Task<PaginatedUsersResponse> SearchUsersAsync(AdminUserSearchRequest request)
     {
+        // Validate pagination parameters
+        request.ValidateAndNormalize();
+
         var query = _userManager.Users.AsQueryable();
 
         // Apply search filter
@@ -55,14 +58,11 @@ public class AdminUserService : IAdminUserService
         // Currently using LockoutEnabled as a proxy for active status
         if (request.IsActive.HasValue)
         {
-            if (request.IsActive.Value)
-            {
-                query = query.Where(u => !u.LockoutEnabled || u.LockoutEnd == null || u.LockoutEnd <= DateTimeOffset.UtcNow);
-            }
-            else
-            {
-                query = query.Where(u => u.LockoutEnabled && u.LockoutEnd > DateTimeOffset.UtcNow);
-            }
+            query = query.Where(u =>
+                request.IsActive.Value
+                    ? (!u.LockoutEnabled || u.LockoutEnd == null || u.LockoutEnd <= DateTimeOffset.UtcNow)
+                    : (u.LockoutEnabled && u.LockoutEnd > DateTimeOffset.UtcNow)
+            );
         }
 
         // Get total count
@@ -206,8 +206,8 @@ public class AdminUserService : IAdminUserService
         }
 
         // TODO: Implement actual password reset email sending
-        // For now, just generate a reset token
-        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        // For now, just generate a reset token (will be used when email sending is implemented)
+        // await _userManager.GeneratePasswordResetTokenAsync(user);
 
         // Log the action
         await _auditLogService.LogActionAsync(
