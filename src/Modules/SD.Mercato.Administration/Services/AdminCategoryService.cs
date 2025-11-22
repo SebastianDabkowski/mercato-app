@@ -170,7 +170,11 @@ public class AdminCategoryService : IAdminCategoryService
                 throw new InvalidOperationException("Parent category not found");
             }
 
-            // TODO: Add check to prevent creating circular hierarchy chains
+            // Check for circular hierarchy chains
+            if (await WouldCreateCircularReferenceAsync(categoryId, request.ParentCategoryId.Value))
+            {
+                throw new InvalidOperationException("Setting this parent would create a circular reference in the category hierarchy");
+            }
         }
 
         var changes = new Dictionary<string, object>();
@@ -276,5 +280,38 @@ public class AdminCategoryService : IAdminCategoryService
             ipAddress);
 
         return true;
+    }
+
+    /// <summary>
+    /// Checks if setting a parent would create a circular reference in the category hierarchy.
+    /// </summary>
+    private async Task<bool> WouldCreateCircularReferenceAsync(Guid categoryId, Guid proposedParentId)
+    {
+        // Traverse up the hierarchy from the proposed parent
+        // If we reach the category we're trying to update, it's circular
+        var currentId = proposedParentId;
+        var visitedIds = new HashSet<Guid> { categoryId };
+
+        while (currentId != Guid.Empty)
+        {
+            if (visitedIds.Contains(currentId))
+            {
+                // Found a circular reference
+                return true;
+            }
+
+            visitedIds.Add(currentId);
+
+            var parent = await _catalogContext.Categories.FindAsync(currentId);
+            if (parent == null || !parent.ParentCategoryId.HasValue)
+            {
+                // Reached the root or invalid parent
+                break;
+            }
+
+            currentId = parent.ParentCategoryId.Value;
+        }
+
+        return false;
     }
 }
