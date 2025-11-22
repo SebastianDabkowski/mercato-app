@@ -17,4 +17,10 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SD.Mercato.History\SD.Mercato.History.csproj" />
+    <ProjectReference Include="..\SD.Mercato.SellerPanel\SD.Mercato.SellerPanel.csproj" />
+    <ProjectReference Include="..\SD.Mercato.ProductCatalog\SD.Mercato.ProductCatalog.csproj" />
+  </ItemGroup>
+
 </Project>

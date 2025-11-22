@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using SD.Mercato.Reviews.Data;
 using SD.Mercato.Reviews.DTOs;
 using SD.Mercato.Reviews.Models;
+using SD.Mercato.History.Data;
+using SD.Mercato.SellerPanel.Data;
+using SD.Mercato.ProductCatalog.Data;
 
 namespace SD.Mercato.Reviews.Services;
 
@@ -11,20 +14,59 @@ namespace SD.Mercato.Reviews.Services;
 public class ReviewService : IReviewService
 {
     private readonly ReviewsDbContext _context;
+    private readonly HistoryDbContext _historyContext;
+    private readonly SellerPanelDbContext _sellerContext;
+    private readonly ProductCatalogDbContext _productContext;
 
-    public ReviewService(ReviewsDbContext context)
+    public ReviewService(
+        ReviewsDbContext context,
+        HistoryDbContext historyContext,
+        SellerPanelDbContext sellerContext,
+        ProductCatalogDbContext productContext)
     {
         _context = context;
+        _historyContext = historyContext;
+        _sellerContext = sellerContext;
+        _productContext = productContext;
     }
 
     #region Seller Reviews
 
     public async Task<ReviewResponse> CreateReviewAsync(string buyerUserId, string buyerName, CreateReviewRequest request)
     {
-        // TODO: Validate that the SubOrder exists and belongs to the buyer
-        // TODO: Validate that the SubOrder is delivered/completed before allowing review
-        // This requires access to the History module which may not be directly available here.
-        // Consider adding these validations in the controller layer or using a domain event/service.
+        // Validate that the SubOrder exists
+        var subOrder = await _historyContext.SubOrders
+            .Include(so => so.Order)
+            .FirstOrDefaultAsync(so => so.Id == request.SubOrderId);
+
+        if (subOrder == null)
+        {
+            return new ReviewResponse
+            {
+                Success = false,
+                Message = "SubOrder not found."
+            };
+        }
+
+        // Validate that the SubOrder belongs to the buyer
+        if (subOrder.Order?.UserId != buyerUserId)
+        {
+            return new ReviewResponse
+            {
+                Success = false,
+                Message = "You can only review your own orders."
+            };
+        }
+
+        // Validate that the SubOrder is delivered or completed
+        if (subOrder.Status != "Delivered" && subOrder.Status != "Completed")
+        {
+            return new ReviewResponse
+            {
+                Success = false,
+                Message = "You can only review orders that have been delivered."
+            };
+        }
 
         // Check if buyer already reviewed this SubOrder
         var existingReview = await _context.Reviews
@@ -43,7 +85,7 @@ public class ReviewService : IReviewService
         {
             Id = Guid.NewGuid(),
             SubOrderId = request.SubOrderId,
-            StoreId = Guid.Empty, // TODO: Get StoreId from SubOrder
+            StoreId = subOrder.StoreId,
             BuyerUserId = buyerUserId,
             BuyerName = buyerName,
             Rating = request.Rating,
@@ -56,11 +98,13 @@ public class ReviewService : IReviewService
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
 
+        var reviewDto = await MapToReviewDtoAsync(review);
+
         return new ReviewResponse
         {
             Success = true,
             Message = "Review created successfully.",
-            Review = MapToReviewDto(review)
+            Review = reviewDto
         };
     }
 
@@ -69,7 +113,7 @@ public class ReviewService : IReviewService
         var review = await _context.Reviews
             .FirstOrDefaultAsync(r => r.Id == reviewId);
 
-        return review != null ? MapToReviewDto(review) : null;
+        return review != null ? await MapToReviewDtoAsync(review) : null;
     }
 
     public async Task<ReviewListResponse> GetReviewsByStoreIdAsync(Guid storeId, int pageNumber = 1, int pageSize = 10)
@@ -84,9 +128,15 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
+        var reviewDtos = new List<ReviewDto>();
+        foreach (var review in reviews)
+        {
+            reviewDtos.Add(await MapToReviewDtoAsync(review));
+        }
+
         return new ReviewListResponse
         {
-            Reviews = reviews.Select(MapToReviewDto).ToList(),
+            Reviews = reviewDtos,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
@@ -105,9 +155,15 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
+        var reviewDtos = new List<ReviewDto>();
+        foreach (var review in reviews)
+        {
+            reviewDtos.Add(await MapToReviewDtoAsync(review));
+        }
+
         return new ReviewListResponse
         {
-            Reviews = reviews.Select(MapToReviewDto).ToList(),
+            Reviews = reviewDtos,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
@@ -181,9 +237,40 @@ public class ReviewService : IReviewService
 
     public async Task<ProductReviewResponse> CreateProductReviewAsync(string buyerUserId, string buyerName, CreateProductReviewRequest request)
     {
-        // TODO: Validate that the SubOrderItem exists and belongs to the buyer
-        // TODO: Validate that the order is delivered/completed before allowing review
-        // TODO: Get ProductId and StoreId from SubOrderItem
+        // Validate that the SubOrderItem exists
+        var subOrderItem = await _historyContext.SubOrderItems
+            .Include(soi => soi.SubOrder)
+            .ThenInclude(so => so!.Order)
+            .FirstOrDefaultAsync(soi => soi.Id == request.SubOrderItemId);
+
+        if (subOrderItem == null)
+        {
+            return new ProductReviewResponse
+            {
+                Success = false,
+                Message = "Order item not found."
+            };
+        }
+
+        // Validate that the order belongs to the buyer
+        if (subOrderItem.SubOrder?.Order?.UserId != buyerUserId)
+        {
+            return new ProductReviewResponse
+            {
+                Success = false,
+                Message = "You can only review products you have purchased."
+            };
+        }
+
+        // Validate that the order is delivered or completed
+        if (subOrderItem.SubOrder?.Status != "Delivered" && subOrderItem.SubOrder?.Status != "Completed")
+        {
+            return new ProductReviewResponse
+            {
+                Success = false,
+                Message = "You can only review products from delivered orders."
+            };
+        }
 
         // Check if buyer already reviewed this SubOrderItem
         var existingReview = await _context.ProductReviews
@@ -202,8 +289,8 @@ public class ReviewService : IReviewService
         {
             Id = Guid.NewGuid(),
             SubOrderItemId = request.SubOrderItemId,
-            ProductId = Guid.Empty, // TODO: Get from SubOrderItem
-            StoreId = Guid.Empty, // TODO: Get from SubOrderItem
+            ProductId = subOrderItem.ProductId,
+            StoreId = subOrderItem.SubOrder!.StoreId,
             BuyerUserId = buyerUserId,
             BuyerName = buyerName,
             Rating = request.Rating,
@@ -216,11 +303,13 @@ public class ReviewService : IReviewService
         _context.ProductReviews.Add(productReview);
         await _context.SaveChangesAsync();
 
+        var reviewDto = await MapToProductReviewDtoAsync(productReview);
+
         return new ProductReviewResponse
         {
             Success = true,
             Message = "Product review created successfully.",
-            Review = MapToProductReviewDto(productReview)
+            Review = reviewDto
         };
     }
 
@@ -229,7 +318,7 @@ public class ReviewService : IReviewService
         var review = await _context.ProductReviews
             .FirstOrDefaultAsync(pr => pr.Id == reviewId);
 
-        return review != null ? MapToProductReviewDto(review) : null;
+        return review != null ? await MapToProductReviewDtoAsync(review) : null;
     }
 
     public async Task<ProductReviewListResponse> GetProductReviewsByProductIdAsync(Guid productId, int pageNumber = 1, int pageSize = 10)
@@ -244,9 +333,15 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
+        var reviewDtos = new List<ProductReviewDto>();
+        foreach (var review in reviews)
+        {
+            reviewDtos.Add(await MapToProductReviewDtoAsync(review));
+        }
+
         return new ProductReviewListResponse
         {
-            Reviews = reviews.Select(MapToProductReviewDto).ToList(),
+            Reviews = reviewDtos,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
@@ -265,9 +360,15 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
+        var reviewDtos = new List<ProductReviewDto>();
+        foreach (var review in reviews)
+        {
+            reviewDtos.Add(await MapToProductReviewDtoAsync(review));
+        }
+
         return new ProductReviewListResponse
         {
-            Reviews = reviews.Select(MapToProductReviewDto).ToList(),
+            Reviews = reviewDtos,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
@@ -356,9 +457,15 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
+        var reviewDtos = new List<ReviewDto>();
+        foreach (var review in reviews)
+        {
+            reviewDtos.Add(await MapToReviewDtoAsync(review));
+        }
+
         return new ReviewListResponse
         {
-            Reviews = reviews.Select(MapToReviewDto).ToList(),
+            Reviews = reviewDtos,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
@@ -382,9 +489,15 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
+        var reviewDtos = new List<ProductReviewDto>();
+        foreach (var review in reviews)
+        {
+            reviewDtos.Add(await MapToProductReviewDtoAsync(review));
+        }
+
         return new ProductReviewListResponse
         {
-            Reviews = reviews.Select(MapToProductReviewDto).ToList(),
+            Reviews = reviewDtos,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize
@@ -395,14 +508,19 @@ public class ReviewService : IReviewService
 
     #region Helper Methods
 
-    private static ReviewDto MapToReviewDto(Review review)
+    private async Task<ReviewDto> MapToReviewDtoAsync(Review review)
     {
+        var storeName = await _sellerContext.Stores
+            .Where(s => s.Id == review.StoreId)
+            .Select(s => s.DisplayName ?? s.StoreName)
+            .FirstOrDefaultAsync() ?? "Unknown Store";
+
         return new ReviewDto
         {
             Id = review.Id,
             SubOrderId = review.SubOrderId,
             StoreId = review.StoreId,
-            StoreName = string.Empty, // TODO: Populate from Store lookup
+            StoreName = storeName,
             BuyerName = review.BuyerName,
             Rating = review.Rating,
             Comment = review.Comment,
@@ -412,16 +530,26 @@ public class ReviewService : IReviewService
         };
     }
 
-    private static ProductReviewDto MapToProductReviewDto(ProductReview review)
+    private async Task<ProductReviewDto> MapToProductReviewDtoAsync(ProductReview review)
     {
+        var productTitle = await _productContext.Products
+            .Where(p => p.Id == review.ProductId)
+            .Select(p => p.Title)
+            .FirstOrDefaultAsync() ?? "Unknown Product";
+
+        var storeName = await _sellerContext.Stores
+            .Where(s => s.Id == review.StoreId)
+            .Select(s => s.DisplayName ?? s.StoreName)
+            .FirstOrDefaultAsync() ?? "Unknown Store";
+
         return new ProductReviewDto
         {
             Id = review.Id,
             SubOrderItemId = review.SubOrderItemId,
             ProductId = review.ProductId,
-            ProductTitle = string.Empty, // TODO: Populate from Product lookup
+            ProductTitle = productTitle,
             StoreId = review.StoreId,
-            StoreName = string.Empty, // TODO: Populate from Store lookup
+            StoreName = storeName,
             BuyerName = review.BuyerName,
             Rating = review.Rating,
             Comment = review.Comment,
