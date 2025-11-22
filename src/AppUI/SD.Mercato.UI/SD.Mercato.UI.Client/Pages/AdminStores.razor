@@ -145,9 +145,9 @@
                             </li>
                             @for (int i = 1; i <= storesResponse.TotalPages; i++)
                             {
-                                var page = i;
-                                <li class="page-item @(page == currentPage ? "active" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(page)">@page</button>
+                                var pageNum = i;
+                                <li class="page-item @(pageNum == currentPage ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(pageNum)">@pageNum</button>
                                 </li>
                             }
                             <li class="page-item @(currentPage == storesResponse.TotalPages ? "disabled" : "")">
