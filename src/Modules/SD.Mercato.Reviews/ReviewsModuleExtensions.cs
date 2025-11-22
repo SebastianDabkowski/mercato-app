@@ -8,6 +8,8 @@ namespace SD.Mercato.Reviews;
 
 /// <summary>
 /// Extension methods for configuring Reviews module services.
+/// NOTE: This module depends on HistoryDbContext, SellerPanelDbContext, and ProductCatalogDbContext.
+/// Ensure that AddHistoryModule, AddSellerPanelModule, and AddProductCatalogModule are called before AddReviewsModule.
 /// </summary>
 public static class ReviewsModuleExtensions
 {

@@ -211,20 +211,20 @@ public class ReviewService : IReviewService
         review.ModeratedByUserId = moderatorUserId;
         review.ModerationNote = request.Note;
 
-        switch (request.Action.ToLower())
+        if (string.Equals(request.Action, "hide", StringComparison.OrdinalIgnoreCase))
         {
-            case "hide":
-                review.IsVisible = false;
-                review.Status = ReviewStatus.Hidden;
-                break;
-            case "approve":
-                review.IsVisible = true;
-                review.Status = ReviewStatus.Approved;
-                break;
-            case "delete":
-                review.Status = ReviewStatus.Deleted;
-                review.IsVisible = false;
-                break;
+            review.IsVisible = false;
+            review.Status = ReviewStatus.Hidden;
+        }
+        else if (string.Equals(request.Action, "approve", StringComparison.OrdinalIgnoreCase))
+        {
+            review.IsVisible = true;
+            review.Status = ReviewStatus.Approved;
+        }
+        else if (string.Equals(request.Action, "delete", StringComparison.OrdinalIgnoreCase))
+        {
+            review.Status = ReviewStatus.Deleted;
+            review.IsVisible = false;
         }
 
         await _context.SaveChangesAsync();
@@ -416,20 +416,20 @@ public class ReviewService : IReviewService
         review.ModeratedByUserId = moderatorUserId;
         review.ModerationNote = request.Note;
 
-        switch (request.Action.ToLower())
+        if (string.Equals(request.Action, "hide", StringComparison.OrdinalIgnoreCase))
         {
-            case "hide":
-                review.IsVisible = false;
-                review.Status = ReviewStatus.Hidden;
-                break;
-            case "approve":
-                review.IsVisible = true;
-                review.Status = ReviewStatus.Approved;
-                break;
-            case "delete":
-                review.Status = ReviewStatus.Deleted;
-                review.IsVisible = false;
-                break;
+            review.IsVisible = false;
+            review.Status = ReviewStatus.Hidden;
+        }
+        else if (string.Equals(request.Action, "approve", StringComparison.OrdinalIgnoreCase))
+        {
+            review.IsVisible = true;
+            review.Status = ReviewStatus.Approved;
+        }
+        else if (string.Equals(request.Action, "delete", StringComparison.OrdinalIgnoreCase))
+        {
+            review.Status = ReviewStatus.Deleted;
+            review.IsVisible = false;
         }
 
         await _context.SaveChangesAsync();

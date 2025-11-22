@@ -54,10 +54,6 @@ public class ReviewsController : ControllerBase
 
         var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Anonymous";
 
-        // TODO: Validate that the SubOrder exists and belongs to this buyer
-        // TODO: Validate that the SubOrder is in Delivered or Completed status
-        // This requires calling the OrderService to verify ownership and status
-
         var result = await _reviewService.CreateReviewAsync(userId, userName, request);
 
         if (!result.Success)
@@ -166,10 +162,6 @@ public class ReviewsController : ControllerBase
         }
 
         var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Anonymous";
-
-        // TODO: Validate that the SubOrderItem exists and belongs to this buyer
-        // TODO: Validate that the order is in Delivered or Completed status
-        // This requires accessing SubOrderItem details from the History module
 
         var result = await _reviewService.CreateProductReviewAsync(userId, userName, request);
 
