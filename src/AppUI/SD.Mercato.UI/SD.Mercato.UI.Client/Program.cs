@@ -22,5 +22,6 @@ builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ISellerOrderService, SellerOrderService>();
 builder.Services.AddScoped<ICaseService, CaseService>();
+builder.Services.AddScoped<ReviewService>();
 
 await builder.Build().RunAsync();

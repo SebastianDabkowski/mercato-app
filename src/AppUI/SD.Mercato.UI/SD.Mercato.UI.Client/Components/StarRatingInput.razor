@@ -1,0 +1,56 @@
+@* Interactive star rating input component *@
+
+<div class="star-rating-input @CssClass">
+    @for (int i = 1; i <= 5; i++)
+    {
+        var starNumber = i;
+        <span class="star @(starNumber <= SelectedRating ? "selected" : "unselected")"
+              @onclick="() => OnStarClick(starNumber)">
+            ★
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int SelectedRating { get; set; }
+
+    [Parameter]
+    public EventCallback<int> SelectedRatingChanged { get; set; }
+
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+
+    private async Task OnStarClick(int rating)
+    {
+        SelectedRating = rating;
+        await SelectedRatingChanged.InvokeAsync(rating);
+    }
+}
+
+<style>
+    .star-rating-input {
+        display: inline-flex;
+        gap: 4px;
+        cursor: pointer;
+    }
+
+    .star-rating-input .star {
+        font-size: 2em;
+        transition: color 0.2s, transform 0.2s;
+        user-select: none;
+    }
+
+    .star-rating-input .star.selected {
+        color: #ffc107;
+    }
+
+    .star-rating-input .star.unselected {
+        color: #e0e0e0;
+    }
+
+    .star-rating-input .star:hover {
+        transform: scale(1.2);
+        color: #ffc107;
+    }
+</style>

@@ -1,0 +1,327 @@
+@using SD.Mercato.UI.Client.Services
+@inject ReviewService ReviewService
+
+@* Modal for submitting a product review *@
+
+@if (IsVisible)
+{
+    <div class="modal-overlay" @onclick="Close">
+        <div class="modal-content" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3>@Title</h3>
+                <button class="close-btn" @onclick="Close">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger">@ErrorMessage</div>
+                }
+
+                @if (!string.IsNullOrEmpty(SuccessMessage))
+                {
+                    <div class="alert alert-success">@SuccessMessage</div>
+                }
+
+                @if (string.IsNullOrEmpty(SuccessMessage))
+                {
+                    <div class="form-group">
+                        <label>Rating *</label>
+                        <StarRatingInput SelectedRating="@Rating" SelectedRatingChanged="OnRatingChanged" />
+                        @if (Rating == 0 && _attemptedSubmit)
+                        {
+                            <small class="text-danger">Please select a rating</small>
+                        }
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comment">Comment (Optional)</label>
+                        <textarea id="comment" class="form-control" rows="5" maxlength="2000" 
+                                  @bind="Comment" placeholder="Share your experience..."></textarea>
+                        <small class="text-muted">@(Comment?.Length ?? 0) / 2000 characters</small>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" @onclick="Close" disabled="@_isSubmitting">Cancel</button>
+                        <button class="btn btn-primary" @onclick="SubmitReview" disabled="@_isSubmitting">
+                            @if (_isSubmitting)
+                            {
+                                <span>Submitting...</span>
+                            }
+                            else
+                            {
+                                <span>Submit Review</span>
+                            }
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" @onclick="Close">Close</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "Write a Review";
+
+    [Parameter]
+    public Guid? SubOrderId { get; set; }
+
+    [Parameter]
+    public Guid? SubOrderItemId { get; set; }
+
+    [Parameter]
+    public EventCallback OnReviewSubmitted { get; set; }
+
+    private int Rating { get; set; }
+    private string? Comment { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+    private bool _isSubmitting = false;
+    private bool _attemptedSubmit = false;
+
+    private async Task OnRatingChanged(int rating)
+    {
+        Rating = rating;
+    }
+
+    private async Task SubmitReview()
+    {
+        _attemptedSubmit = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        if (Rating == 0)
+        {
+            ErrorMessage = "Please select a rating";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            if (SubOrderItemId.HasValue)
+            {
+                // Product review
+                var request = new CreateProductReviewRequest
+                {
+                    SubOrderItemId = SubOrderItemId.Value,
+                    Rating = Rating,
+                    Comment = Comment
+                };
+
+                var response = await ReviewService.CreateProductReviewAsync(request);
+                if (response.Success)
+                {
+                    SuccessMessage = "Review submitted successfully!";
+                    await OnReviewSubmitted.InvokeAsync();
+                    await Task.Delay(1500);
+                    await Close();
+                }
+                else
+                {
+                    ErrorMessage = response.Message ?? "Failed to submit review";
+                }
+            }
+            else if (SubOrderId.HasValue)
+            {
+                // Seller review
+                var request = new CreateReviewRequest
+                {
+                    SubOrderId = SubOrderId.Value,
+                    Rating = Rating,
+                    Comment = Comment
+                };
+
+                var response = await ReviewService.CreateReviewAsync(request);
+                if (response.Success)
+                {
+                    SuccessMessage = "Review submitted successfully!";
+                    await OnReviewSubmitted.InvokeAsync();
+                    await Task.Delay(1500);
+                    await Close();
+                }
+                else
+                {
+                    ErrorMessage = response.Message ?? "Failed to submit review";
+                }
+            }
+            else
+            {
+                ErrorMessage = "Invalid review target";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+        
+        // Reset form
+        Rating = 0;
+        Comment = null;
+        ErrorMessage = null;
+        SuccessMessage = null;
+        _attemptedSubmit = false;
+    }
+}
+
+<style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1050;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #6c757d;
+    }
+
+    .close-btn:hover {
+        color: #000;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .alert {
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: 4px;
+    }
+
+    .alert-danger {
+        color: #842029;
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+    }
+
+    .alert-success {
+        color: #0f5132;
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #0b5ed7;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background-color: #5c636a;
+    }
+
+    .btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    .text-danger {
+        color: #dc3545;
+    }
+
+    .text-muted {
+        color: #6c757d;
+    }
+</style>

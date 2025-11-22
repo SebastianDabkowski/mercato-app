@@ -1,0 +1,70 @@
+@* Star rating display component *@
+
+<div class="star-rating @CssClass">
+    @for (int i = 1; i <= 5; i++)
+    {
+        var starNumber = i;
+        @if (starNumber <= Rating)
+        {
+            <span class="star filled">★</span>
+        }
+        else if (starNumber - 0.5 <= Rating)
+        {
+            <span class="star half">★</span>
+        }
+        else
+        {
+            <span class="star empty">☆</span>
+        }
+    }
+    @if (ShowCount && TotalReviews > 0)
+    {
+        <span class="review-count">(@TotalReviews @(TotalReviews == 1 ? "review" : "reviews"))</span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public double Rating { get; set; }
+
+    [Parameter]
+    public int TotalReviews { get; set; }
+
+    [Parameter]
+    public bool ShowCount { get; set; } = true;
+
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+}
+
+<style>
+    .star-rating {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .star {
+        font-size: 1.2em;
+        line-height: 1;
+    }
+
+    .star.filled {
+        color: #ffc107;
+    }
+
+    .star.half {
+        color: #ffc107;
+        opacity: 0.5;
+    }
+
+    .star.empty {
+        color: #e0e0e0;
+    }
+
+    .review-count {
+        margin-left: 8px;
+        color: #666;
+        font-size: 0.9em;
+    }
+</style>
