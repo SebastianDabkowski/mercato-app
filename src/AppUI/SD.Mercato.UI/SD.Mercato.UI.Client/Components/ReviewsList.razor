@@ -1,0 +1,179 @@
+@using SD.Mercato.UI.Client.Services
+
+@* Component to display a list of reviews *@
+
+<div class="reviews-list @CssClass">
+    @if (Reviews == null || !Reviews.Any())
+    {
+        <p class="no-reviews">No reviews yet. Be the first to review!</p>
+    }
+    else
+    {
+        <div class="reviews-header">
+            <h4>Customer Reviews (@TotalCount)</h4>
+        </div>
+
+        @foreach (var review in Reviews)
+        {
+            <div class="review-item">
+                <div class="review-header">
+                    <div class="reviewer-info">
+                        <span class="reviewer-name">@review.BuyerName</span>
+                        <span class="review-date">@review.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    <StarRating Rating="@review.Rating" ShowCount="false" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(review.Comment))
+                {
+                    <div class="review-comment">
+                        @review.Comment
+                    </div>
+                }
+            </div>
+        }
+
+        @if (TotalPages > 1)
+        {
+            <div class="pagination">
+                <button class="btn btn-sm" @onclick="PreviousPage" disabled="@(CurrentPage <= 1)">
+                    Previous
+                </button>
+                <span class="page-info">Page @CurrentPage of @TotalPages</span>
+                <button class="btn btn-sm" @onclick="NextPage" disabled="@(CurrentPage >= TotalPages)">
+                    Next
+                </button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<ProductReviewDto>? Reviews { get; set; }
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public int TotalPages { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnPageChanged { get; set; }
+
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+
+    private async Task PreviousPage()
+    {
+        if (CurrentPage > 1)
+        {
+            await OnPageChanged.InvokeAsync(CurrentPage - 1);
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CurrentPage < TotalPages)
+        {
+            await OnPageChanged.InvokeAsync(CurrentPage + 1);
+        }
+    }
+}
+
+<style>
+    .reviews-list {
+        margin-top: 2rem;
+    }
+
+    .reviews-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .reviews-header h4 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .no-reviews {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+        font-style: italic;
+    }
+
+    .review-item {
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .review-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .reviewer-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .reviewer-name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #212529;
+    }
+
+    .review-date {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
+    .review-comment {
+        color: #495057;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding: 1rem 0;
+    }
+
+    .pagination .btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #dee2e6;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .pagination .btn:hover:not(:disabled) {
+        background: #e9ecef;
+    }
+
+    .pagination .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-info {
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+</style>
