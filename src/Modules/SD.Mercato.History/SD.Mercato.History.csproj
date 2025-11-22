@@ -21,6 +21,7 @@
     <ProjectReference Include="..\SD.Mercato.Cart\SD.Mercato.Cart.csproj" />
     <ProjectReference Include="..\SD.Mercato.ProductCatalog\SD.Mercato.ProductCatalog.csproj" />
     <ProjectReference Include="..\SD.Mercato.SellerPanel\SD.Mercato.SellerPanel.csproj" />
+    <ProjectReference Include="..\SD.Mercato.Notification\SD.Mercato.Notification.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,8 @@ using SD.Mercato.History.DTOs;
 using SD.Mercato.History.Models;
 using SD.Mercato.ProductCatalog.Services;
 using SD.Mercato.SellerPanel.Services;
+using SD.Mercato.Notification.Services;
+using SD.Mercato.Notification.Models;
 
 namespace SD.Mercato.History.Services;
 
@@ -18,6 +20,7 @@ public class OrderService : IOrderService
     private readonly ICartService _cartService;
     private readonly IProductService _productService;
     private readonly IStoreService _storeService;
+    private readonly INotificationService? _notificationService;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
@@ -25,13 +28,15 @@ public class OrderService : IOrderService
         ICartService cartService,
         IProductService productService,
         IStoreService storeService,
-        ILogger<OrderService> logger)
+        ILogger<OrderService> logger,
+        INotificationService? notificationService = null)
     {
         _dbContext = dbContext;
         _cartService = cartService;
         _productService = productService;
         _storeService = storeService;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task<CreateOrderResponse> CreateOrderFromCartAsync(string userId, CreateOrderRequest request)
@@ -425,7 +430,37 @@ public class OrderService : IOrderService
             "SubOrder status updated: SubOrderId={SubOrderId}, OldStatus={OldStatus}, NewStatus={NewStatus}, StoreId={StoreId}",
             subOrderId, oldStatus, request.Status, storeId);
 
-        // TODO: Send notification to buyer about status change
+        // Send notification to buyer about status change
+        if (_notificationService != null && subOrder.Order != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.SendEmailNotificationAsync(
+                        recipientUserId: subOrder.Order.UserId,
+                        recipientEmail: subOrder.Order.BuyerEmail,
+                        eventType: NotificationEventTypes.OrderStatusChanged,
+                        subject: $"Order Status Update - {subOrder.SubOrderNumber}",
+                        templateName: "OrderStatusChanged",
+                        templateData: new Dictionary<string, string>
+                        {
+                            { "CustomerName", subOrder.Order.DeliveryRecipientName },
+                            { "OrderNumber", subOrder.SubOrderNumber },
+                            { "NewStatus", request.Status },
+                            { "TrackingNumber", request.TrackingNumber ?? "Not provided" }
+                        },
+                        relatedEntityId: subOrder.Id,
+                        relatedEntityType: "SubOrder"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send order status notification for SubOrderId={SubOrderId}", subOrderId);
+                }
+            });
+        }
+        
         // TODO: Trigger payout calculation when status is Delivered
 
         return (true, null);
@@ -518,8 +553,105 @@ public class OrderService : IOrderService
 
             // TODO: Deduct stock for all items in the order
             // TODO: Clear the user's cart
-            // TODO: Send order confirmation email to buyer
-            // TODO: Send new order notification to sellers
+            
+            // Send order confirmation email to buyer
+            if (_notificationService != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.SendEmailNotificationAsync(
+                            recipientUserId: order.UserId,
+                            recipientEmail: order.BuyerEmail,
+                            eventType: NotificationEventTypes.OrderCreated,
+                            subject: $"Order Confirmation - {order.OrderNumber}",
+                            templateName: "OrderConfirmation",
+                            templateData: new Dictionary<string, string>
+                            {
+                                { "CustomerName", order.DeliveryRecipientName },
+                                { "OrderNumber", order.OrderNumber },
+                                { "OrderDate", order.CreatedAt.ToString("MMMM dd, yyyy") },
+                                { "TotalAmount", order.TotalAmount.ToString("F2") }
+                            },
+                            relatedEntityId: order.Id,
+                            relatedEntityType: "Order"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send order confirmation email for OrderId={OrderId}", orderId);
+                    }
+                });
+
+                // Send new order notification to each seller
+                foreach (var subOrder in subOrders)
+                {
+                    var storeId = subOrder.StoreId;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // Get store owner details
+                            var store = await _storeService.GetStoreByIdAsync(storeId);
+                            if (store != null && !string.IsNullOrEmpty(store.ContactEmail))
+                            {
+                                await _notificationService.SendEmailNotificationAsync(
+                                    recipientUserId: store.OwnerUserId,
+                                    recipientEmail: store.ContactEmail,
+                                    eventType: NotificationEventTypes.OrderCreated,
+                                    subject: $"New Order Received - {subOrder.SubOrderNumber}",
+                                    templateName: "NewOrderSeller",
+                                    templateData: new Dictionary<string, string>
+                                    {
+                                        { "SellerName", store.DisplayName },
+                                        { "SubOrderNumber", subOrder.SubOrderNumber },
+                                        { "OrderDate", subOrder.CreatedAt.ToString("MMMM dd, yyyy") },
+                                        { "Amount", subOrder.TotalAmount.ToString("F2") },
+                                        { "ItemCount", subOrder.Items.Count.ToString() }
+                                    },
+                                    relatedEntityId: subOrder.Id,
+                                    relatedEntityType: "SubOrder"
+                                );
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to send seller notification for SubOrderId={SubOrderId}", subOrder.Id);
+                        }
+                    });
+                }
+            }
+        }
+        else if ((paymentStatus == OrderPaymentStatus.Failed || paymentStatus == OrderPaymentStatus.Refunded) && _notificationService != null)
+        {
+            // Send payment status notification to buyer
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.SendEmailNotificationAsync(
+                        recipientUserId: order.UserId,
+                        recipientEmail: order.BuyerEmail,
+                        eventType: NotificationEventTypes.PaymentStatusChanged,
+                        subject: $"Payment {paymentStatus} - {order.OrderNumber}",
+                        templateName: "PaymentStatusChanged",
+                        templateData: new Dictionary<string, string>
+                        {
+                            { "CustomerName", order.DeliveryRecipientName },
+                            { "OrderNumber", order.OrderNumber },
+                            { "PaymentStatus", paymentStatus },
+                            { "Amount", order.TotalAmount.ToString("F2") }
+                        },
+                        relatedEntityId: order.Id,
+                        relatedEntityType: "Order"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send payment status email for OrderId={OrderId}", orderId);
+                }
+            });
         }
 
         await _dbContext.SaveChangesAsync();

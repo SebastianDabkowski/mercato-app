@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using SD.Mercato.History.Data;
 using SD.Mercato.History.DTOs;
 using SD.Mercato.History.Models;
+using SD.Mercato.Notification.Services;
+using SD.Mercato.Notification.Models;
+using SD.Mercato.SellerPanel.Services;
+using Microsoft.Extensions.Logging;
 
 namespace SD.Mercato.History.Services;
 
@@ -11,10 +15,20 @@ namespace SD.Mercato.History.Services;
 public class CaseService : ICaseService
 {
     private readonly HistoryDbContext _context;
+    private readonly INotificationService? _notificationService;
+    private readonly IStoreService? _storeService;
+    private readonly ILogger<CaseService>? _logger;
 
-    public CaseService(HistoryDbContext context)
+    public CaseService(
+        HistoryDbContext context,
+        INotificationService? notificationService = null,
+        IStoreService? storeService = null,
+        ILogger<CaseService>? logger = null)
     {
         _context = context;
+        _notificationService = notificationService;
+        _storeService = storeService;
+        _logger = logger;
     }
 
     public async Task<CreateCaseResponseDto> CreateReturnRequestAsync(string buyerId, CreateReturnRequestDto request)
@@ -76,6 +90,42 @@ public class CaseService : ICaseService
         _context.Cases.Add(caseEntity);
         await _context.SaveChangesAsync();
 
+        // Send notification to seller
+        if (_notificationService != null && _storeService != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var store = await _storeService.GetStoreByIdAsync(subOrder.StoreId);
+                    if (store != null && !string.IsNullOrEmpty(store.ContactEmail))
+                    {
+                        await _notificationService.SendEmailNotificationAsync(
+                            recipientUserId: store.OwnerUserId,
+                            recipientEmail: store.ContactEmail,
+                            eventType: NotificationEventTypes.CaseCreated,
+                            subject: $"New Return Request - {caseEntity.CaseNumber}",
+                            templateName: "CaseCreated",
+                            templateData: new Dictionary<string, string>
+                            {
+                                { "SellerName", store.DisplayName },
+                                { "CaseNumber", caseEntity.CaseNumber },
+                                { "CaseType", caseEntity.CaseType },
+                                { "OrderNumber", subOrder.SubOrderNumber },
+                                { "Reason", caseEntity.Reason }
+                            },
+                            relatedEntityId: caseEntity.Id,
+                            relatedEntityType: "Case"
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to send case notification for CaseId={CaseId}", caseEntity.Id);
+                }
+            });
+        }
+
         return new CreateCaseResponseDto
         {
             CaseId = caseEntity.Id,
@@ -135,6 +185,42 @@ public class CaseService : ICaseService
 
         _context.Cases.Add(caseEntity);
         await _context.SaveChangesAsync();
+
+        // Send notification to seller
+        if (_notificationService != null && _storeService != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var store = await _storeService.GetStoreByIdAsync(subOrder.StoreId);
+                    if (store != null && !string.IsNullOrEmpty(store.ContactEmail))
+                    {
+                        await _notificationService.SendEmailNotificationAsync(
+                            recipientUserId: store.OwnerUserId,
+                            recipientEmail: store.ContactEmail,
+                            eventType: NotificationEventTypes.CaseCreated,
+                            subject: $"New Complaint - {caseEntity.CaseNumber}",
+                            templateName: "CaseCreated",
+                            templateData: new Dictionary<string, string>
+                            {
+                                { "SellerName", store.DisplayName },
+                                { "CaseNumber", caseEntity.CaseNumber },
+                                { "CaseType", caseEntity.CaseType },
+                                { "OrderNumber", subOrder.SubOrderNumber },
+                                { "Reason", caseEntity.Reason }
+                            },
+                            relatedEntityId: caseEntity.Id,
+                            relatedEntityType: "Case"
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to send case notification for CaseId={CaseId}", caseEntity.Id);
+                }
+            });
+        }
 
         return new CreateCaseResponseDto
         {
