@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\Modules\SD.Mercato.History\SD.Mercato.History.csproj" />
     <ProjectReference Include="..\..\Modules\SD.Mercato.Payments\SD.Mercato.Payments.csproj" />
     <ProjectReference Include="..\..\Modules\SD.Mercato.Notification\SD.Mercato.Notification.csproj" />
+    <ProjectReference Include="..\..\Modules\SD.Mercato.Reviews\SD.Mercato.Reviews.csproj" />
   </ItemGroup>
 
 </Project>
