@@ -3,6 +3,7 @@ using SD.Mercato.Reviews.Data;
 using SD.Mercato.Reviews.DTOs;
 using SD.Mercato.Reviews.Models;
 using SD.Mercato.History.Data;
+using SD.Mercato.History.Models;
 using SD.Mercato.SellerPanel.Data;
 using SD.Mercato.ProductCatalog.Data;
 
@@ -58,8 +59,8 @@ public class ReviewService : IReviewService
             };
         }
 
-        // Validate that the SubOrder is delivered or completed
-        if (subOrder.Status != "Delivered" && subOrder.Status != "Completed")
+        // Validate that the SubOrder is delivered
+        if (subOrder.Status != SubOrderStatus.Delivered)
         {
             return new ReviewResponse
             {
@@ -128,11 +129,25 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
-        var reviewDtos = new List<ReviewDto>();
-        foreach (var review in reviews)
+        // Batch load store names to avoid N+1 queries
+        var storeIds = reviews.Select(r => r.StoreId).Distinct().ToList();
+        var storeNames = await _sellerContext.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.DisplayName ?? s.StoreName);
+
+        var reviewDtos = reviews.Select(review => new ReviewDto
         {
-            reviewDtos.Add(await MapToReviewDtoAsync(review));
-        }
+            Id = review.Id,
+            SubOrderId = review.SubOrderId,
+            StoreId = review.StoreId,
+            StoreName = storeNames.TryGetValue(review.StoreId, out var name) ? name : "Unknown Store",
+            BuyerName = review.BuyerName,
+            Rating = review.Rating,
+            Comment = review.Comment,
+            Status = review.Status,
+            IsVisible = review.IsVisible,
+            CreatedAt = review.CreatedAt
+        }).ToList();
 
         return new ReviewListResponse
         {
@@ -155,11 +170,25 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
-        var reviewDtos = new List<ReviewDto>();
-        foreach (var review in reviews)
+        // Batch load store names to avoid N+1 queries
+        var storeIds = reviews.Select(r => r.StoreId).Distinct().ToList();
+        var storeNames = await _sellerContext.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.DisplayName ?? s.StoreName);
+
+        var reviewDtos = reviews.Select(review => new ReviewDto
         {
-            reviewDtos.Add(await MapToReviewDtoAsync(review));
-        }
+            Id = review.Id,
+            SubOrderId = review.SubOrderId,
+            StoreId = review.StoreId,
+            StoreName = storeNames.TryGetValue(review.StoreId, out var name) ? name : "Unknown Store",
+            BuyerName = review.BuyerName,
+            Rating = review.Rating,
+            Comment = review.Comment,
+            Status = review.Status,
+            IsVisible = review.IsVisible,
+            CreatedAt = review.CreatedAt
+        }).ToList();
 
         return new ReviewListResponse
         {
@@ -262,8 +291,8 @@ public class ReviewService : IReviewService
             };
         }
 
-        // Validate that the order is delivered or completed
-        if (subOrderItem.SubOrder?.Status != "Delivered" && subOrderItem.SubOrder?.Status != "Completed")
+        // Validate that the order is delivered
+        if (subOrderItem.SubOrder?.Status != SubOrderStatus.Delivered)
         {
             return new ProductReviewResponse
             {
@@ -333,11 +362,33 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
-        var reviewDtos = new List<ProductReviewDto>();
-        foreach (var review in reviews)
+        // Batch load product titles and store names to avoid N+1 queries
+        var productIds = reviews.Select(r => r.ProductId).Distinct().ToList();
+        var storeIds = reviews.Select(r => r.StoreId).Distinct().ToList();
+
+        var productTitles = await _productContext.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Title);
+
+        var storeNames = await _sellerContext.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.DisplayName ?? s.StoreName);
+
+        var reviewDtos = reviews.Select(review => new ProductReviewDto
         {
-            reviewDtos.Add(await MapToProductReviewDtoAsync(review));
-        }
+            Id = review.Id,
+            SubOrderItemId = review.SubOrderItemId,
+            ProductId = review.ProductId,
+            ProductTitle = productTitles.TryGetValue(review.ProductId, out var title) ? title : "Unknown Product",
+            StoreId = review.StoreId,
+            StoreName = storeNames.TryGetValue(review.StoreId, out var name) ? name : "Unknown Store",
+            BuyerName = review.BuyerName,
+            Rating = review.Rating,
+            Comment = review.Comment,
+            Status = review.Status,
+            IsVisible = review.IsVisible,
+            CreatedAt = review.CreatedAt
+        }).ToList();
 
         return new ProductReviewListResponse
         {
@@ -360,11 +411,33 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
-        var reviewDtos = new List<ProductReviewDto>();
-        foreach (var review in reviews)
+        // Batch load product titles and store names to avoid N+1 queries
+        var productIds = reviews.Select(r => r.ProductId).Distinct().ToList();
+        var storeIds = reviews.Select(r => r.StoreId).Distinct().ToList();
+
+        var productTitles = await _productContext.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Title);
+
+        var storeNames = await _sellerContext.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.DisplayName ?? s.StoreName);
+
+        var reviewDtos = reviews.Select(review => new ProductReviewDto
         {
-            reviewDtos.Add(await MapToProductReviewDtoAsync(review));
-        }
+            Id = review.Id,
+            SubOrderItemId = review.SubOrderItemId,
+            ProductId = review.ProductId,
+            ProductTitle = productTitles.TryGetValue(review.ProductId, out var title) ? title : "Unknown Product",
+            StoreId = review.StoreId,
+            StoreName = storeNames.TryGetValue(review.StoreId, out var name) ? name : "Unknown Store",
+            BuyerName = review.BuyerName,
+            Rating = review.Rating,
+            Comment = review.Comment,
+            Status = review.Status,
+            IsVisible = review.IsVisible,
+            CreatedAt = review.CreatedAt
+        }).ToList();
 
         return new ProductReviewListResponse
         {
@@ -457,11 +530,25 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
-        var reviewDtos = new List<ReviewDto>();
-        foreach (var review in reviews)
+        // Batch load store names to avoid N+1 queries
+        var storeIds = reviews.Select(r => r.StoreId).Distinct().ToList();
+        var storeNames = await _sellerContext.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.DisplayName ?? s.StoreName);
+
+        var reviewDtos = reviews.Select(review => new ReviewDto
         {
-            reviewDtos.Add(await MapToReviewDtoAsync(review));
-        }
+            Id = review.Id,
+            SubOrderId = review.SubOrderId,
+            StoreId = review.StoreId,
+            StoreName = storeNames.TryGetValue(review.StoreId, out var name) ? name : "Unknown Store",
+            BuyerName = review.BuyerName,
+            Rating = review.Rating,
+            Comment = review.Comment,
+            Status = review.Status,
+            IsVisible = review.IsVisible,
+            CreatedAt = review.CreatedAt
+        }).ToList();
 
         return new ReviewListResponse
         {
@@ -489,11 +576,33 @@ public class ReviewService : IReviewService
             .Take(pageSize)
             .ToListAsync();
 
-        var reviewDtos = new List<ProductReviewDto>();
-        foreach (var review in reviews)
+        // Batch load product titles and store names to avoid N+1 queries
+        var productIds = reviews.Select(r => r.ProductId).Distinct().ToList();
+        var storeIds = reviews.Select(r => r.StoreId).Distinct().ToList();
+
+        var productTitles = await _productContext.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Title);
+
+        var storeNames = await _sellerContext.Stores
+            .Where(s => storeIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.DisplayName ?? s.StoreName);
+
+        var reviewDtos = reviews.Select(review => new ProductReviewDto
         {
-            reviewDtos.Add(await MapToProductReviewDtoAsync(review));
-        }
+            Id = review.Id,
+            SubOrderItemId = review.SubOrderItemId,
+            ProductId = review.ProductId,
+            ProductTitle = productTitles.TryGetValue(review.ProductId, out var title) ? title : "Unknown Product",
+            StoreId = review.StoreId,
+            StoreName = storeNames.TryGetValue(review.StoreId, out var name) ? name : "Unknown Store",
+            BuyerName = review.BuyerName,
+            Rating = review.Rating,
+            Comment = review.Comment,
+            Status = review.Status,
+            IsVisible = review.IsVisible,
+            CreatedAt = review.CreatedAt
+        }).ToList();
 
         return new ProductReviewListResponse
         {

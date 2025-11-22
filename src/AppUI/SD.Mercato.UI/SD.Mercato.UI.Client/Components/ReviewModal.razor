@@ -38,7 +38,7 @@
                         <label for="comment">Comment (Optional)</label>
                         <textarea id="comment" class="form-control" rows="5" maxlength="2000" 
                                   @bind="Comment" placeholder="Share your experience..."></textarea>
-                        <small class="text-muted">@Comment?.Length / 2000 characters</small>
+                        <small class="text-muted">@(Comment?.Length ?? 0) / 2000 characters</small>
                     </div>
 
                     <div class="modal-footer">

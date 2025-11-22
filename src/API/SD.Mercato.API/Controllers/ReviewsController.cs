@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SD.Mercato.Reviews.DTOs;
 using SD.Mercato.Reviews.Services;
-using SD.Mercato.History.Services;
 using System.Security.Claims;
 
 namespace SD.Mercato.API.Controllers;
@@ -15,16 +14,13 @@ namespace SD.Mercato.API.Controllers;
 public class ReviewsController : ControllerBase
 {
     private readonly IReviewService _reviewService;
-    private readonly IOrderService _orderService;
     private readonly ILogger<ReviewsController> _logger;
 
     public ReviewsController(
         IReviewService reviewService,
-        IOrderService orderService,
         ILogger<ReviewsController> logger)
     {
         _reviewService = reviewService;
-        _orderService = orderService;
         _logger = logger;
     }
 

@@ -5,9 +5,7 @@
     {
         var starNumber = i;
         <span class="star @(starNumber <= SelectedRating ? "selected" : "unselected")"
-              @onclick="() => OnStarClick(starNumber)"
-              @onmouseover="() => OnStarHover(starNumber)"
-              @onmouseout="OnStarHoverEnd">
+              @onclick="() => OnStarClick(starNumber)">
             ★
         </span>
     }
@@ -23,22 +21,10 @@
     [Parameter]
     public string CssClass { get; set; } = string.Empty;
 
-    private int _hoverRating = 0;
-
     private async Task OnStarClick(int rating)
     {
         SelectedRating = rating;
         await SelectedRatingChanged.InvokeAsync(rating);
-    }
-
-    private void OnStarHover(int rating)
-    {
-        _hoverRating = rating;
-    }
-
-    private void OnStarHoverEnd()
-    {
-        _hoverRating = 0;
     }
 }
 

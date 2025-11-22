@@ -96,7 +96,7 @@ public class ProductReviewDto
 public class ModerateReviewRequest
 {
     [Required(ErrorMessage = "Action is required")]
-    [RegularExpression("^(hide|approve|delete)$", ErrorMessage = "Action must be 'hide', 'approve', or 'delete'")]
+    [RegularExpression("(?i)^(hide|approve|delete)$", ErrorMessage = "Action must be 'hide', 'approve', or 'delete'")]
     public string Action { get; set; } = string.Empty;
 
     [MaxLength(500, ErrorMessage = "Note cannot exceed 500 characters")]
