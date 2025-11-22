@@ -114,22 +114,16 @@ public class CasesController : ControllerBase
         }
 
         // Validate status filter
-        if (!string.IsNullOrEmpty(status))
+        if (!string.IsNullOrEmpty(status) && !CaseStatuses.ValidStatuses.Contains(status))
         {
-            if (!CaseStatuses.ValidStatuses.Contains(status))
-            {
-                return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", CaseStatuses.ValidStatuses)}" });
-            }
+            return BadRequest(new { message = $"Invalid status. Valid values are: {string.Join(", ", CaseStatuses.ValidStatuses)}" });
         }
 
         // Validate case type
-        if (!string.IsNullOrEmpty(caseType))
+        var validTypes = new[] { CaseTypes.Return, CaseTypes.Complaint };
+        if (!string.IsNullOrEmpty(caseType) && !validTypes.Contains(caseType))
         {
-            var validTypes = new[] { CaseTypes.Return, CaseTypes.Complaint };
-            if (!validTypes.Contains(caseType))
-            {
-                return BadRequest(new { message = $"Invalid case type. Valid values are: {string.Join(", ", validTypes)}" });
-            }
+            return BadRequest(new { message = $"Invalid case type. Valid values are: {string.Join(", ", validTypes)}" });
         }
 
         var filter = new CaseFilterRequestDto
@@ -284,10 +278,33 @@ public class CasesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateCaseStatus(Guid id, [FromBody] UpdateCaseStatusRequestDto request)
     {
-        // TODO: Verify that seller owns the store related to this case
-        // For MVP, we trust the role authorization
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        // Get the case to verify authorization
+        var caseDto = await _caseService.GetCaseByIdAsync(id);
+        if (caseDto == null)
+        {
+            return NotFound(new { message = "Case not found" });
+        }
+
+        // Verify that seller owns the store related to this case
+        // TODO: Implement proper seller-to-store mapping verification
+        // For now, we check if user is admin or assume seller authorization is valid
+        var isAdmin = userRole == "Administrator";
+        if (!isAdmin && userRole == "Seller")
+        {
+            // TODO: Query store ownership to verify userId owns the store with caseDto.StoreId
+            // For MVP, we trust that the seller role implies proper store ownership
+        }
 
         var (success, errorMessage) = await _caseService.UpdateCaseStatusAsync(id, request);
         
@@ -311,6 +328,7 @@ public class CasesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> AddCaseMessage(Guid id, [FromBody] AddCaseMessageRequestDto request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -322,8 +340,25 @@ public class CasesController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        // TODO: Verify that user is authorized to add message to this case
-        // (buyer owns case, seller owns store, or admin)
+        // Verify that user is authorized to add message to this case
+        var caseDetails = await _caseService.GetCaseByIdAsync(id);
+        if (caseDetails == null)
+        {
+            return NotFound(new { message = "Case not found" });
+        }
+
+        // Authorization: buyer owns case, seller owns store, or admin
+        var isBuyer = caseDetails.BuyerId == userId;
+        var isAdmin = userRole.Equals("Administrator", StringComparison.OrdinalIgnoreCase);
+        var isSeller = userRole.Equals("Seller", StringComparison.OrdinalIgnoreCase);
+        
+        // TODO: For sellers, verify they actually own the store (caseDetails.StoreId)
+        // For MVP, we trust that seller role implies proper store ownership
+
+        if (!isBuyer && !isSeller && !isAdmin)
+        {
+            return Forbid();
+        }
 
         var (success, errorMessage) = await _caseService.AddCaseMessageAsync(id, userId, userName, userRole, request);
         

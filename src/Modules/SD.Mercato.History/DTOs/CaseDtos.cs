@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SD.Mercato.History.DTOs;
 
 /// <summary>
@@ -18,11 +20,13 @@ public record CreateReturnRequestDto
     /// <summary>
     /// Reason for return (e.g., "Defective", "Wrong item", "Not as described").
     /// </summary>
+    [MaxLength(100)]
     public required string Reason { get; init; }
 
     /// <summary>
     /// Detailed description from buyer.
     /// </summary>
+    [MaxLength(2000)]
     public required string Description { get; init; }
 }
 
@@ -44,11 +48,13 @@ public record CreateComplaintRequestDto
     /// <summary>
     /// Reason for complaint (e.g., "Late delivery", "Poor quality", "Damaged packaging").
     /// </summary>
+    [MaxLength(100)]
     public required string Reason { get; init; }
 
     /// <summary>
     /// Detailed description from buyer.
     /// </summary>
+    [MaxLength(2000)]
     public required string Description { get; init; }
 }
 
@@ -65,6 +71,7 @@ public record UpdateCaseStatusRequestDto
     /// <summary>
     /// Optional resolution notes when closing the case.
     /// </summary>
+    [MaxLength(1000)]
     public string? Resolution { get; init; }
 }
 
@@ -76,6 +83,7 @@ public record AddCaseMessageRequestDto
     /// <summary>
     /// Message content.
     /// </summary>
+    [MaxLength(2000)]
     public required string Message { get; init; }
 }
 

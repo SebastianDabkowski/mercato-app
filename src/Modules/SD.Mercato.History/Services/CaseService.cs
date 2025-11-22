@@ -54,7 +54,7 @@ public class CaseService : ICaseService
         }
 
         // Generate case number
-        var caseNumber = await GenerateNextCaseNumberAsync();
+        var caseNumber = GenerateNextCaseNumberAsync();
 
         // Create the case
         var caseEntity = new Case
@@ -114,7 +114,7 @@ public class CaseService : ICaseService
         }
 
         // Generate case number
-        var caseNumber = await GenerateNextCaseNumberAsync();
+        var caseNumber = GenerateNextCaseNumberAsync();
 
         // Create the case
         var caseEntity = new Case
@@ -337,28 +337,14 @@ public class CaseService : ICaseService
         };
     }
 
-    private async Task<string> GenerateNextCaseNumberAsync()
+    private static string GenerateNextCaseNumberAsync()
     {
+        // Generate unique case number: CASE-YYYY-XXXXXXXXXXXX
+        // Using year + GUID part for uniqueness (similar to OrderNumber pattern)
+        // This avoids race conditions that could occur with sequential numbering
         var today = DateTime.UtcNow;
         var year = today.Year;
-        
-        // Get the highest case number for this year
-        var lastCaseNumber = await _context.Cases
-            .Where(c => c.CaseNumber.StartsWith($"CASE-{year}-"))
-            .OrderByDescending(c => c.CaseNumber)
-            .Select(c => c.CaseNumber)
-            .FirstOrDefaultAsync();
-
-        int nextNumber = 1;
-        if (lastCaseNumber != null)
-        {
-            var parts = lastCaseNumber.Split('-');
-            if (parts.Length == 3 && int.TryParse(parts[2], out int lastNumber))
-            {
-                nextNumber = lastNumber + 1;
-            }
-        }
-
-        return $"CASE-{year}-{nextNumber:D6}";
+        var guidPart = Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper();
+        return $"CASE-{year}-{guidPart}";
     }
 }
