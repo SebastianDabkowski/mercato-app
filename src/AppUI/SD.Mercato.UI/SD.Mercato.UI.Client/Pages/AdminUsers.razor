@@ -1,0 +1,307 @@
+@page "/admin/users"
+@using SD.Mercato.UI.Client.Services
+@inject IAdminUserService AdminUserService
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrator")]
+
+<PageTitle>User Management</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>User Management</h3>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
+        </div>
+    }
+
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" @bind="searchTerm" @bind:event="oninput" placeholder="Email, name..." />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" @bind="selectedRole">
+                        <option value="">All</option>
+                        <option value="Buyer">Buyer</option>
+                        <option value="Seller">Seller</option>
+                        <option value="Administrator">Administrator</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="selectedStatus">
+                        <option value="">All</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Email Verified</label>
+                    <select class="form-select" @bind="selectedEmailVerified">
+                        <option value="">All</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" @onclick="SearchUsers">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (usersResponse != null && usersResponse.Users.Any())
+    {
+        <!-- Users Table -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Email Verified</th>
+                                <th>Created</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in usersResponse.Users)
+                            {
+                                <tr>
+                                    <td>@user.Email</td>
+                                    <td>@user.FirstName @user.LastName</td>
+                                    <td><span class="badge bg-info">@user.Role</span></td>
+                                    <td>
+                                        @if (user.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (user.IsEmailVerified)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        }
+                                    </td>
+                                    <td>@user.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
+                                    <td>@(user.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "Never")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary me-1" @onclick="() => ViewUserDetail(user.Id)">
+                                            <i class="bi bi-eye"></i> View
+                                        </button>
+                                        @if (user.IsActive)
+                                        {
+                                            <button class="btn btn-sm btn-warning" @onclick="() => ShowDeactivateModal(user)">
+                                                <i class="bi bi-lock"></i> Deactivate
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-success" @onclick="() => ActivateUser(user.Id)">
+                                                <i class="bi bi-unlock"></i> Activate
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (usersResponse.TotalPages > 1)
+                {
+                    <nav aria-label="Page navigation" class="mt-3">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">Previous</button>
+                            </li>
+                            @for (int i = 1; i <= usersResponse.TotalPages; i++)
+                            {
+                                var page = i;
+                                <li class="page-item @(page == currentPage ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(page)">@page</button>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == usersResponse.TotalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">Next</button>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+
+                <div class="text-center text-muted mt-2">
+                    Showing @usersResponse.Users.Count of @usersResponse.TotalCount users
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            No users found.
+        </div>
+    }
+</div>
+
+@code {
+    private PaginatedUsersResponse? usersResponse;
+    private string searchTerm = string.Empty;
+    private string selectedRole = string.Empty;
+    private string selectedStatus = string.Empty;
+    private string selectedEmailVerified = string.Empty;
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SearchUsers();
+    }
+
+    private async Task SearchUsers()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            bool? isActive = string.IsNullOrEmpty(selectedStatus) ? null : bool.Parse(selectedStatus);
+            bool? isEmailVerified = string.IsNullOrEmpty(selectedEmailVerified) ? null : bool.Parse(selectedEmailVerified);
+            string? role = string.IsNullOrEmpty(selectedRole) ? null : selectedRole;
+
+            usersResponse = await AdminUserService.SearchUsersAsync(
+                searchTerm,
+                role,
+                isActive,
+                isEmailVerified,
+                currentPage,
+                pageSize);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || (usersResponse != null && page > usersResponse.TotalPages))
+            return;
+
+        currentPage = page;
+        await SearchUsers();
+    }
+
+    private void ViewUserDetail(string userId)
+    {
+        // TODO: Implement user detail view or navigate to detail page
+        successMessage = $"User detail view for {userId} - To be implemented";
+    }
+
+    private void ShowDeactivateModal(AdminUserListDto user)
+    {
+        // TODO: Show modal with reason input
+        // For now, just deactivate directly
+        _ = DeactivateUser(user.Id);
+    }
+
+    private async Task DeactivateUser(string userId)
+    {
+        try
+        {
+            var request = new UpdateUserStatusRequest
+            {
+                IsActive = false,
+                Reason = "Deactivated by administrator"
+            };
+
+            var success = await AdminUserService.UpdateUserStatusAsync(userId, request);
+            if (success)
+            {
+                successMessage = "User deactivated successfully";
+                await SearchUsers();
+            }
+            else
+            {
+                errorMessage = "Failed to deactivate user";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deactivating user: {ex.Message}";
+        }
+    }
+
+    private async Task ActivateUser(string userId)
+    {
+        try
+        {
+            var request = new UpdateUserStatusRequest
+            {
+                IsActive = true,
+                Reason = "Activated by administrator"
+            };
+
+            var success = await AdminUserService.UpdateUserStatusAsync(userId, request);
+            if (success)
+            {
+                successMessage = "User activated successfully";
+                await SearchUsers();
+            }
+            else
+            {
+                errorMessage = "Failed to activate user";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error activating user: {ex.Message}";
+        }
+    }
+}
