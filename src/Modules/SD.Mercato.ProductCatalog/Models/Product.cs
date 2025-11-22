@@ -42,6 +42,12 @@ public class Category
     /// </summary>
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Default commission rate for products in this category (optional override).
+    /// If set, this rate is used instead of the store's default commission rate.
+    /// </summary>
+    public decimal? DefaultCommissionRate { get; set; }
 }
 
 /// <summary>

@@ -6,6 +6,7 @@ using SD.Mercato.History;
 using SD.Mercato.Payments;
 using SD.Mercato.Notification;
 using SD.Mercato.Reviews;
+using SD.Mercato.Administration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,9 @@ builder.Services.AddNotificationModule(builder.Configuration);
 
 // Add Reviews module (reviews and ratings)
 builder.Services.AddReviewsModule(builder.Configuration);
+
+// Add Administration module (admin panel and audit logging)
+builder.Services.AddAdministrationModule(builder.Configuration);
 
 // Add CORS
 // TODO: Restrict CORS to specific origins (frontend URL) before production deployment
