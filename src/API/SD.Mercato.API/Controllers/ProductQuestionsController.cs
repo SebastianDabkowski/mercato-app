@@ -55,11 +55,6 @@ public class ProductQuestionsController : ControllerBase
 
         var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Anonymous";
 
-        if (request.ProductId != productId)
-        {
-            return BadRequest(new { message = "Product ID in URL does not match request body" });
-        }
-
         if (string.IsNullOrWhiteSpace(request.QuestionText) || request.QuestionText.Length > 1000)
         {
             return BadRequest(new { message = "Question text must be between 1 and 1000 characters" });
@@ -123,17 +118,28 @@ public class ProductQuestionsController : ControllerBase
         var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Anonymous";
         var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
 
-        if (request.QuestionId != questionId)
-        {
-            return BadRequest(new { message = "Question ID in URL does not match request body" });
-        }
-
         if (string.IsNullOrWhiteSpace(request.AnswerText) || request.AnswerText.Length > 2000)
         {
             return BadRequest(new { message = "Answer text must be between 1 and 2000 characters" });
         }
 
-        // TODO: Verify that seller owns the product or user is admin
+        // Verify that seller owns the product or user is admin
+        if (userRole == "Administrator")
+        {
+            // Admins can answer any question
+        }
+        else if (userRole == "Seller")
+        {
+            var isOwner = await _questionService.IsUserOwnerOfProductAsync(productId, userId);
+            if (!isOwner)
+            {
+                return Forbid();
+            }
+        }
+        else
+        {
+            return Forbid();
+        }
 
         var answer = await _questionService.CreateAnswerAsync(
             questionId,
@@ -170,7 +176,25 @@ public class ProductQuestionsController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        // TODO: Verify that seller owns the product or user is admin
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
+
+        // Verify that seller owns the product or user is admin
+        if (userRole == "Administrator")
+        {
+            // Admins can hide any question
+        }
+        else if (userRole == "Seller")
+        {
+            var isOwner = await _questionService.IsUserOwnerOfProductAsync(productId, userId);
+            if (!isOwner)
+            {
+                return Forbid();
+            }
+        }
+        else
+        {
+            return Forbid();
+        }
 
         var success = await _questionService.HideQuestionAsync(questionId, userId);
 

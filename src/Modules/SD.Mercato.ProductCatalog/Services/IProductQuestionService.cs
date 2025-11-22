@@ -45,4 +45,9 @@ public interface IProductQuestionService
     /// Hide an answer (admin/seller only).
     /// </summary>
     Task<bool> HideAnswerAsync(Guid answerId, string userId);
+
+    /// <summary>
+    /// Check if a user owns the product associated with a question.
+    /// </summary>
+    Task<bool> IsUserOwnerOfProductAsync(Guid productId, string userId);
 }

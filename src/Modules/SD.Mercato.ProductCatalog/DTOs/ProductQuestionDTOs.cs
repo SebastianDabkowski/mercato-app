@@ -5,7 +5,6 @@ namespace SD.Mercato.ProductCatalog.DTOs;
 /// </summary>
 public record CreateProductQuestionRequest
 {
-    public required Guid ProductId { get; init; }
     public required string QuestionText { get; init; }
 }
 
@@ -14,7 +13,6 @@ public record CreateProductQuestionRequest
 /// </summary>
 public record CreateProductAnswerRequest
 {
-    public required Guid QuestionId { get; init; }
     public required string AnswerText { get; init; }
 }
 

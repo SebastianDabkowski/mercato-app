@@ -113,7 +113,7 @@ public class EmailService : IEmailService
         <p>Best regards,<br>Mercato Team</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";
@@ -151,7 +151,7 @@ public class EmailService : IEmailService
         <p>Best regards,<br>Mercato Team</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";
@@ -187,7 +187,7 @@ public class EmailService : IEmailService
         <p>Best regards,<br>Mercato Team</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";
@@ -223,7 +223,7 @@ public class EmailService : IEmailService
         <p>Best regards,<br>Mercato Team</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";
@@ -260,7 +260,7 @@ public class EmailService : IEmailService
         <p>Best regards,<br>Mercato Team</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";
@@ -296,7 +296,7 @@ public class EmailService : IEmailService
         <p>Best regards,<br>Mercato Team</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";
@@ -323,7 +323,7 @@ public class EmailService : IEmailService
         <p>{{Message}}</p>
     </div>
     <div class='footer'>
-        <p>&copy; 2024 Mercato. All rights reserved.</p>
+        <p>&copy; 2025 Mercato. All rights reserved.</p>
     </div>
 </body>
 </html>";

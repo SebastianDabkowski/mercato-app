@@ -437,14 +437,6 @@ public class OrderService : IOrderService
             {
                 try
                 {
-                    var statusMessage = request.Status switch
-                    {
-                        SubOrderStatus.Shipped => "has been shipped",
-                        SubOrderStatus.Delivered => "has been delivered",
-                        SubOrderStatus.Cancelled => "has been cancelled",
-                        _ => $"status has been updated to {request.Status}"
-                    };
-
                     await _notificationService.SendEmailNotificationAsync(
                         recipientUserId: subOrder.Order.UserId,
                         recipientEmail: subOrder.Order.BuyerEmail,
@@ -631,38 +623,35 @@ public class OrderService : IOrderService
                 }
             }
         }
-        else if (paymentStatus == OrderPaymentStatus.Failed || paymentStatus == OrderPaymentStatus.Refunded)
+        else if ((paymentStatus == OrderPaymentStatus.Failed || paymentStatus == OrderPaymentStatus.Refunded) && _notificationService != null)
         {
             // Send payment status notification to buyer
-            if (_notificationService != null)
+            _ = Task.Run(async () =>
             {
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
-                    {
-                        await _notificationService.SendEmailNotificationAsync(
-                            recipientUserId: order.UserId,
-                            recipientEmail: order.BuyerEmail,
-                            eventType: NotificationEventTypes.PaymentStatusChanged,
-                            subject: $"Payment {paymentStatus} - {order.OrderNumber}",
-                            templateName: "PaymentStatusChanged",
-                            templateData: new Dictionary<string, string>
-                            {
-                                { "CustomerName", order.DeliveryRecipientName },
-                                { "OrderNumber", order.OrderNumber },
-                                { "PaymentStatus", paymentStatus },
-                                { "Amount", order.TotalAmount.ToString("F2") }
-                            },
-                            relatedEntityId: order.Id,
-                            relatedEntityType: "Order"
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to send payment status email for OrderId={OrderId}", orderId);
-                    }
-                });
-            }
+                    await _notificationService.SendEmailNotificationAsync(
+                        recipientUserId: order.UserId,
+                        recipientEmail: order.BuyerEmail,
+                        eventType: NotificationEventTypes.PaymentStatusChanged,
+                        subject: $"Payment {paymentStatus} - {order.OrderNumber}",
+                        templateName: "PaymentStatusChanged",
+                        templateData: new Dictionary<string, string>
+                        {
+                            { "CustomerName", order.DeliveryRecipientName },
+                            { "OrderNumber", order.OrderNumber },
+                            { "PaymentStatus", paymentStatus },
+                            { "Amount", order.TotalAmount.ToString("F2") }
+                        },
+                        relatedEntityId: order.Id,
+                        relatedEntityType: "Order"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send payment status email for OrderId={OrderId}", orderId);
+                }
+            });
         }
 
         await _dbContext.SaveChangesAsync();
