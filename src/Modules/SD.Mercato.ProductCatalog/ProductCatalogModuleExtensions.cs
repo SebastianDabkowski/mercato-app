@@ -27,6 +27,7 @@ public static class ProductCatalogModuleExtensions
         // Add services
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductQuestionService, ProductQuestionService>();
 
         return services;
     }

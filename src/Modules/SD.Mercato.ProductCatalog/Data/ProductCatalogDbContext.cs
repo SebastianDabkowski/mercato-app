@@ -23,6 +23,16 @@ public class ProductCatalogDbContext : DbContext
     /// </summary>
     public DbSet<Category> Categories { get; set; } = null!;
 
+    /// <summary>
+    /// Product questions collection.
+    /// </summary>
+    public DbSet<ProductQuestion> ProductQuestions { get; set; } = null!;
+
+    /// <summary>
+    /// Product answers collection.
+    /// </summary>
+    public DbSet<ProductAnswer> ProductAnswers { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -132,6 +142,69 @@ public class ProductCatalogDbContext : DbContext
 
             // Note: Foreign key to Store in SellerPanel module
             // The actual FK constraint will be added at the database level or when modules are integrated
+        });
+
+        // Configure ProductQuestion entity
+        builder.Entity<ProductQuestion>(entity =>
+        {
+            entity.HasKey(q => q.Id);
+
+            entity.Property(q => q.QuestionText)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            entity.Property(q => q.AskedByName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(q => q.Status)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(q => q.IsVisible)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            entity.HasIndex(q => q.ProductId);
+            entity.HasIndex(q => q.AskedByUserId);
+            entity.HasIndex(q => q.Status);
+
+            // Configure relationship with Product
+            entity.HasOne(q => q.Product)
+                .WithMany()
+                .HasForeignKey(q => q.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ProductAnswer entity
+        builder.Entity<ProductAnswer>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+
+            entity.Property(a => a.AnswerText)
+                .IsRequired()
+                .HasMaxLength(2000);
+
+            entity.Property(a => a.AnsweredByName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(a => a.AnsweredByRole)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(a => a.IsVisible)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            entity.HasIndex(a => a.QuestionId);
+            entity.HasIndex(a => a.AnsweredByUserId);
+
+            // Configure relationship with Question
+            entity.HasOne(a => a.Question)
+                .WithMany(q => q.Answers)
+                .HasForeignKey(a => a.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
