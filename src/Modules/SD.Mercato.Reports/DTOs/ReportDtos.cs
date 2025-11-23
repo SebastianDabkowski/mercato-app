@@ -329,7 +329,8 @@ public record SellerDashboardRequest
     public required DateTime StartDate { get; init; }
 
     /// <summary>
-    /// Period end date (inclusive).
+    /// Period end date (inclusive at API layer, converted to exclusive in controller).
+    /// The controller adds 1 day to create an exclusive upper bound for database queries.
     /// </summary>
     public required DateTime EndDate { get; init; }
 }

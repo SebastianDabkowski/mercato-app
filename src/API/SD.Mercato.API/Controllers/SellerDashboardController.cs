@@ -95,6 +95,7 @@ public class SellerDashboardController : ControllerBase
 
     /// <summary>
     /// Verifies that the authenticated user owns the specified store.
+    /// Uses lightweight query for efficient ownership verification.
     /// </summary>
     private async Task<bool> VerifyStoreOwnershipAsync(Guid storeId)
     {
@@ -104,7 +105,6 @@ public class SellerDashboardController : ControllerBase
             return false;
         }
 
-        var store = await _storeService.GetStoreByIdAsync(storeId);
-        return store != null && store.OwnerUserId == userId;
+        return await _storeService.IsStoreOwnedByUserAsync(storeId, userId);
     }
 }

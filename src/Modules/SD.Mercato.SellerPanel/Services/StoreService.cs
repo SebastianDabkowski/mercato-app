@@ -324,4 +324,12 @@ public class StoreService : IStoreService
             ReturnInfo = store.ReturnInfo
         };
     }
+
+    public async Task<bool> IsStoreOwnedByUserAsync(Guid storeId, string userId)
+    {
+        // Lightweight query that only checks ownership without loading the full entity
+        return await _context.Stores
+            .Where(s => s.Id == storeId && s.OwnerUserId == userId)
+            .AnyAsync();
+    }
 }

@@ -45,24 +45,32 @@ public class SellerDashboardService : ISellerDashboardService
                 return null;
             }
 
-            // Get SubOrders for the period
-            var subOrders = await _historyContext.SubOrders
-                .Include(so => so.Items)
+            // Revenue-generating statuses (orders that count toward sales metrics)
+            var revenueStatuses = new[] 
+            { 
+                SubOrderStatus.Processing, 
+                SubOrderStatus.Shipped, 
+                SubOrderStatus.Delivered, 
+                SubOrderStatus.Completed 
+            };
+
+            // Base query for SubOrders in the period
+            var subOrdersQuery = _historyContext.SubOrders
                 .Where(so => so.StoreId == request.StoreId
                     && so.CreatedAt >= request.StartDate
                     && so.CreatedAt < request.EndDate
-                    && (so.Status == SubOrderStatus.Delivered 
-                        || so.Status == SubOrderStatus.Completed
-                        || so.Status == SubOrderStatus.Shipped
-                        || so.Status == SubOrderStatus.Processing))
-                .ToListAsync();
+                    && revenueStatuses.Contains(so.Status));
 
-            // Calculate total sales and order count
-            var totalSales = subOrders.Sum(so => so.TotalAmount);
-            var orderCount = subOrders.Count;
+            // Calculate total sales and order count directly in database
+            var totalSales = await subOrdersQuery.SumAsync(so => so.TotalAmount);
+            var orderCount = await subOrdersQuery.CountAsync();
 
-            // Calculate best-selling products
-            var productSales = subOrders
+            // Calculate best-selling products with projection to reduce memory load
+            var productSales = await _historyContext.SubOrders
+                .Where(so => so.StoreId == request.StoreId
+                    && so.CreatedAt >= request.StartDate
+                    && so.CreatedAt < request.EndDate
+                    && revenueStatuses.Contains(so.Status))
                 .SelectMany(so => so.Items)
                 .GroupBy(item => new 
                 { 
@@ -82,7 +90,7 @@ public class SellerDashboardService : ISellerDashboardService
                 })
                 .OrderByDescending(p => p.QuantitySold)
                 .Take(10) // Top 10 best-selling products
-                .ToList();
+                .ToListAsync();
 
             var metrics = new SellerDashboardMetrics
             {

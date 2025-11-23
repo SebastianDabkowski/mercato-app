@@ -205,9 +205,19 @@
             var stores = await StoreService.GetActiveStoresAsync();
             if (stores != null && stores.Any())
             {
-                // TODO: Handle multiple stores per seller if business rules change
-                // Currently assumes one active store per seller
-                storeId = stores.FirstOrDefault()?.Id;
+                // MVP assumes one active store per seller
+                if (stores.Count() > 1)
+                {
+                    Logger.LogWarning(
+                        "Seller has multiple active stores. StoreCount: {StoreCount}", 
+                        stores.Count());
+                    errorMessage = "Data error: Multiple active stores detected for your account. Please contact support.";
+                    storeId = null;
+                }
+                else
+                {
+                    storeId = stores.First().Id;
+                }
             }
             
             if (!storeId.HasValue)

@@ -105,10 +105,7 @@ public class AdminDashboardService : IAdminDashboardService
     private async Task<decimal> CalculateGmvAsync(DateTime startDate, DateTime endDate)
     {
         // GMV = sum of all paid orders' total amounts
-        var gmv = await _historyContext.Orders
-            .Where(o => o.CreatedAt >= startDate 
-                && o.CreatedAt < endDate
-                && o.PaymentStatus == OrderPaymentStatus.Paid)
+        var gmv = await GetPaidOrdersQuery(startDate, endDate)
             .SumAsync(o => o.TotalAmount);
 
         return gmv;
@@ -119,13 +116,21 @@ public class AdminDashboardService : IAdminDashboardService
     /// </summary>
     private async Task<int> CountOrdersAsync(DateTime startDate, DateTime endDate)
     {
-        var count = await _historyContext.Orders
-            .Where(o => o.CreatedAt >= startDate 
-                && o.CreatedAt < endDate
-                && o.PaymentStatus == OrderPaymentStatus.Paid)
+        var count = await GetPaidOrdersQuery(startDate, endDate)
             .CountAsync();
 
         return count;
+    }
+
+    /// <summary>
+    /// Helper method to get base query for paid orders in a date range.
+    /// </summary>
+    private IQueryable<Order> GetPaidOrdersQuery(DateTime startDate, DateTime endDate)
+    {
+        return _historyContext.Orders
+            .Where(o => o.CreatedAt >= startDate 
+                && o.CreatedAt < endDate
+                && o.PaymentStatus == OrderPaymentStatus.Paid);
     }
 
     /// <summary>
@@ -155,27 +160,21 @@ public class AdminDashboardService : IAdminDashboardService
 
     /// <summary>
     /// Counts new user registrations in a specific role for a date range.
-    /// Uses efficient JOIN to avoid N+1 query pattern.
+    /// Uses efficient JOIN to avoid multiple database round trips.
     /// </summary>
     private async Task<int> CountNewUsersInRoleAsync(string roleName, DateTime startDate, DateTime endDate)
     {
-        // Get role ID for the specified role
-        var role = await _usersContext.Roles
-            .FirstOrDefaultAsync(r => r.Name == roleName);
-
-        if (role == null)
-        {
-            _logger.LogWarning("Role {RoleName} not found", roleName);
-            return 0;
-        }
-
-        // Count users created in the date range who have this role (using JOIN for efficiency)
+        // Count users created in the date range who have the specified role (single query with JOINs)
         var count = await _usersContext.Users
             .Join(_usersContext.UserRoles,
                 u => u.Id,
                 ur => ur.UserId,
                 (u, ur) => new { User = u, UserRole = ur })
-            .Where(x => x.UserRole.RoleId == role.Id
+            .Join(_usersContext.Roles,
+                x => x.UserRole.RoleId,
+                r => r.Id,
+                (x, r) => new { User = x.User, Role = r })
+            .Where(x => x.Role.Name == roleName
                 && x.User.CreatedAt >= startDate
                 && x.User.CreatedAt < endDate)
             .CountAsync();
