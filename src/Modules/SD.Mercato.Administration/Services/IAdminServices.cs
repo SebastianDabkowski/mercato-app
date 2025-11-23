@@ -118,3 +118,15 @@ public interface IAuditLogService
     /// </summary>
     Task<List<AuditLogDto>> GetEntityAuditLogsAsync(string entityType, string entityId);
 }
+
+/// <summary>
+/// Interface for admin GDPR compliance services.
+/// </summary>
+public interface IAdminGdprService
+{
+    /// <summary>
+    /// Get all user data for GDPR compliance audit.
+    /// Used by privacy officers to respond to data subject access requests.
+    /// </summary>
+    Task<AdminGdprUserDataResponse?> GetUserDataAsync(AdminGdprSearchRequest request);
+}

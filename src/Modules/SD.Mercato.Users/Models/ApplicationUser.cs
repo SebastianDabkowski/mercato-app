@@ -42,4 +42,25 @@ public class ApplicationUser : IdentityUser
     /// External provider user ID.
     /// </summary>
     public string? ExternalProviderId { get; set; }
+
+    /// <summary>
+    /// GDPR: Indicates whether the user has consented to receive marketing emails.
+    /// </summary>
+    public bool EmailMarketingConsent { get; set; }
+
+    /// <summary>
+    /// GDPR: Timestamp when email marketing consent was last updated.
+    /// </summary>
+    public DateTime? EmailMarketingConsentUpdatedAt { get; set; }
+
+    /// <summary>
+    /// GDPR: Indicates if the user account has been deleted (soft delete for GDPR compliance).
+    /// When true, personal data is anonymized but the record is retained for legal/accounting purposes.
+    /// </summary>
+    public bool IsDeleted { get; set; }
+
+    /// <summary>
+    /// GDPR: Timestamp when the account was deleted.
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
 }

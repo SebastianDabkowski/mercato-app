@@ -175,12 +175,21 @@ namespace SD.Mercato.Users.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("EmailMarketingConsent")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("EmailMarketingConsentUpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("ExternalProvider")
                         .HasMaxLength(50)
@@ -194,6 +203,9 @@ namespace SD.Mercato.Users.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsEmailVerified")
                         .HasColumnType("bit");
