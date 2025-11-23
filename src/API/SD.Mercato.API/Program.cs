@@ -8,6 +8,7 @@ using SD.Mercato.Notification;
 using SD.Mercato.Reviews;
 using SD.Mercato.Administration;
 using SD.Mercato.Reports;
+using SD.Mercato.API.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,8 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Configure Swagger/OpenAPI
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerConfiguration();
 
 // Add Users module (authentication and authorization)
 builder.Services.AddUsersModule(builder.Configuration);

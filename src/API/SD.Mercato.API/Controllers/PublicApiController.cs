@@ -167,14 +167,9 @@ public class PublicApiController : ControllerBase
         // Populate store names
         foreach (var product in products)
         {
-            if (storeDict.TryGetValue(product.StoreId, out var storeName))
-            {
-                product.StoreName = storeName;
-            }
-            else
-            {
-                product.StoreName = "Unknown Store";
-            }
+            product.StoreName = storeDict.TryGetValue(product.StoreId, out var storeName)
+                ? storeName
+                : "Unknown Store";
         }
     }
 }

@@ -13,9 +13,9 @@ public interface IApiTokenService
     Task<CreateApiTokenResponse> CreateTokenAsync(string userId, Guid? storeId, CreateApiTokenRequest request);
 
     /// <summary>
-    /// Validate an API token and return user ID and permissions if valid.
+    /// Validate an API token and return token ID, user ID and permissions if valid.
     /// </summary>
-    Task<(bool IsValid, string? UserId, Guid? StoreId, List<string>? Permissions)> ValidateTokenAsync(string token, string? ipAddress = null);
+    Task<(bool IsValid, Guid? TokenId, string? UserId, Guid? StoreId, List<string>? Permissions)> ValidateTokenAsync(string token, string? ipAddress = null);
 
     /// <summary>
     /// Get all tokens for a user.

@@ -54,7 +54,7 @@ public class ApiTokenService : IApiTokenService
         };
     }
 
-    public async Task<(bool IsValid, string? UserId, Guid? StoreId, List<string>? Permissions)> ValidateTokenAsync(string token, string? ipAddress = null)
+    public async Task<(bool IsValid, Guid? TokenId, string? UserId, Guid? StoreId, List<string>? Permissions)> ValidateTokenAsync(string token, string? ipAddress = null)
     {
         // Remove prefix if present
         if (token.StartsWith(TokenPrefix))
@@ -70,13 +70,13 @@ public class ApiTokenService : IApiTokenService
 
         if (apiToken == null)
         {
-            return (false, null, null, null);
+            return (false, null, null, null, null);
         }
 
         // Check expiration
         if (apiToken.ExpiresAt.HasValue && apiToken.ExpiresAt.Value < DateTime.UtcNow)
         {
-            return (false, null, null, null);
+            return (false, null, null, null, null);
         }
 
         // Check IP whitelist if configured
@@ -85,13 +85,13 @@ public class ApiTokenService : IApiTokenService
             var allowedIps = apiToken.IpWhitelist.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (!allowedIps.Contains(ipAddress))
             {
-                return (false, null, null, null);
+                return (false, null, null, null, null);
             }
         }
 
         var permissions = apiToken.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
-        return (true, apiToken.UserId, apiToken.StoreId, permissions);
+        return (true, apiToken.Id, apiToken.UserId, apiToken.StoreId, permissions);
     }
 
     public async Task<List<ApiTokenDto>> GetUserTokensAsync(string userId)

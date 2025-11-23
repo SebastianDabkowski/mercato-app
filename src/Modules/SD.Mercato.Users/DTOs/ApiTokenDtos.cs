@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SD.Mercato.Users.Validation;
 
 namespace SD.Mercato.Users.DTOs;
 
@@ -18,17 +19,20 @@ public class CreateApiTokenRequest
     /// Permissions for this token (e.g., ["products:read", "products:write", "orders:read"]).
     /// </summary>
     [Required]
+    [ValidPermissions]
     public required List<string> Permissions { get; set; }
 
     /// <summary>
     /// Optional expiration date for the token.
     /// </summary>
+    [FutureDate]
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
     /// Optional IP whitelist (comma-separated).
     /// </summary>
     [MaxLength(500)]
+    [IpAddressList]
     public string? IpWhitelist { get; set; }
 
     /// <summary>

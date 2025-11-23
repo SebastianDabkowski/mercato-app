@@ -43,18 +43,32 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         var ipAddress = Context.Connection.RemoteIpAddress?.ToString();
 
         // Validate the API key
-        var (isValid, userId, storeId, permissions) = await _apiTokenService.ValidateTokenAsync(apiKey, ipAddress);
+        var (isValid, tokenId, userId, storeId, permissions) = await _apiTokenService.ValidateTokenAsync(apiKey, ipAddress);
 
-        if (!isValid || userId == null)
+        if (!isValid || userId == null || tokenId == null)
         {
             return AuthenticateResult.Fail("Invalid API key");
         }
+
+        // Record token usage (async fire-and-forget to avoid blocking the request)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiTokenService.RecordTokenUsageAsync(tokenId.Value);
+            }
+            catch
+            {
+                // Ignore errors in token usage tracking to avoid breaking authentication
+            }
+        });
 
         // Create claims
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, userId),
-            new Claim("AuthenticationType", "ApiKey")
+            new Claim("AuthenticationType", "ApiKey"),
+            new Claim("TokenId", tokenId.Value.ToString())
         };
 
         if (storeId.HasValue)
