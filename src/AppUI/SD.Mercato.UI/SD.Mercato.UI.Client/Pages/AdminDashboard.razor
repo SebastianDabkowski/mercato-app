@@ -1,0 +1,224 @@
+@page "/admin/dashboard"
+@using SD.Mercato.UI.Client.Services
+@inject IAdminDashboardService DashboardService
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrator")]
+
+<PageTitle>Admin Dashboard - Mercato</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Administration Dashboard</h3>
+        <button class="btn btn-outline-primary" @onclick="RefreshMetrics">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading dashboard metrics...</p>
+        </div>
+    }
+    else if (metrics != null)
+    {
+        <!-- GMV Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="mb-3">Gross Merchandise Value (GMV)</h5>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">GMV Today</h6>
+                                <h3 class="mb-0 text-primary">@metrics.GmvToday.ToString("C2")</h3>
+                            </div>
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                                <i class="bi bi-currency-dollar fs-3 text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">GMV This Month</h6>
+                                <h3 class="mb-0 text-success">@metrics.GmvThisMonth.ToString("C2")</h3>
+                            </div>
+                            <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                <i class="bi bi-graph-up fs-3 text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="mb-3">Orders</h5>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Orders Today</h6>
+                                <h3 class="mb-0 text-info">@metrics.OrdersToday</h3>
+                            </div>
+                            <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                <i class="bi bi-cart-check fs-3 text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Orders This Month</h6>
+                                <h3 class="mb-0 text-info">@metrics.OrdersThisMonth</h3>
+                            </div>
+                            <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                <i class="bi bi-box-seam fs-3 text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Platform Stats Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="mb-3">Platform Status</h5>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Active Sellers</h6>
+                                <h3 class="mb-0 text-warning">@metrics.ActiveSellers</h3>
+                            </div>
+                            <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                                <i class="bi bi-shop fs-3 text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card border-secondary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted mb-1">Active Listings</h6>
+                                <h3 class="mb-0 text-secondary">@metrics.ActiveListings</h3>
+                            </div>
+                            <div class="bg-secondary bg-opacity-10 rounded-circle p-3">
+                                <i class="bi bi-tag fs-3 text-secondary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Registrations Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="mb-3">New User Registrations</h5>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Buyers Today</h6>
+                        <h4 class="mb-0">@metrics.NewBuyersToday</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Buyers This Month</h6>
+                        <h4 class="mb-0">@metrics.NewBuyersThisMonth</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Sellers Today</h6>
+                        <h4 class="mb-0">@metrics.NewSellersToday</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-muted mb-1">Sellers This Month</h6>
+                        <h4 class="mb-0">@metrics.NewSellersThisMonth</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = false;
+    private string? errorMessage = null;
+    private AdminDashboardMetrics? metrics = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMetrics();
+    }
+
+    private async Task LoadMetrics()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            metrics = await DashboardService.GetDashboardMetricsAsync();
+            
+            if (metrics == null)
+            {
+                errorMessage = "Failed to load dashboard metrics. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading dashboard: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshMetrics()
+    {
+        await LoadMetrics();
+    }
+}
