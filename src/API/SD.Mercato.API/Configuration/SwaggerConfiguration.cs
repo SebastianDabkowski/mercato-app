@@ -13,8 +13,11 @@ public static class SwaggerConfiguration
         services.AddSwaggerGen(options =>
         {
             // TODO: Add Swagger security schemes for API Key and Bearer authentication
-            // This requires upgrading Microsoft.OpenApi to version 3.x which includes Models namespace
-            // For now, authentication must be tested manually with tools like Postman or curl
+            // The required OpenApiInfo, OpenApiSecurityScheme types need Microsoft.OpenApi package
+            // with the Models namespace. Current Swashbuckle.AspNetCore transitively includes
+            // an older version. For now, authentication must be tested manually with Postman/curl.
+            // To add security schemes: install a compatible Microsoft.OpenApi version and configure
+            // options.AddSecurityDefinition for "ApiKey" and "Bearer" schemes.
             
             // Enable XML comments if available
             var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";

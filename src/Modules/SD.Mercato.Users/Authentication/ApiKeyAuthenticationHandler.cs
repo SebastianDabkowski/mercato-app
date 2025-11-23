@@ -50,12 +50,13 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return AuthenticateResult.Fail("Invalid API key");
         }
 
-        // Record token usage (async fire-and-forget to avoid blocking the request)
-        _ = Task.Run(async () =>
+        // Record token usage in background (fire-and-forget)
+        // Note: In production, consider using a background service or queue for better performance
+        _ = Task.Run(() =>
         {
             try
             {
-                await _apiTokenService.RecordTokenUsageAsync(tokenId.Value);
+                _apiTokenService.RecordTokenUsageAsync(tokenId.Value).GetAwaiter().GetResult();
             }
             catch
             {
