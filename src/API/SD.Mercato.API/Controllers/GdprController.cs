@@ -106,11 +106,13 @@ public class GdprController : ControllerBase
             return Unauthorized();
         }
 
-        var format = request.Format.ToLowerInvariant();
-        if (format != "json" && format != "csv")
+        if (!string.Equals(request.Format, "json", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(request.Format, "csv", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "Invalid format. Supported formats: json, csv" });
         }
+
+        var format = request.Format.ToLowerInvariant();
 
         var exportData = await _gdprService.ExportUserDataAsync(userId, request);
         if (exportData == null)
@@ -183,27 +185,27 @@ public class GdprController : ControllerBase
         // Profile section
         sb.AppendLine("PROFILE DATA");
         sb.AppendLine("Field,Value");
-        sb.AppendLine($"Email,\"{data.Profile.Email}\"");
-        sb.AppendLine($"First Name,\"{data.Profile.FirstName}\"");
-        sb.AppendLine($"Last Name,\"{data.Profile.LastName}\"");
-        sb.AppendLine($"Phone Number,\"{data.Profile.PhoneNumber ?? "N/A"}\"");
-        sb.AppendLine($"Account Created,\"{data.Profile.CreatedAt:yyyy-MM-dd HH:mm:ss}\"");
+        sb.AppendLine($"Email,{EscapeCsvValue(data.Profile.Email)}");
+        sb.AppendLine($"First Name,{EscapeCsvValue(data.Profile.FirstName)}");
+        sb.AppendLine($"Last Name,{EscapeCsvValue(data.Profile.LastName)}");
+        sb.AppendLine($"Phone Number,{EscapeCsvValue(data.Profile.PhoneNumber)}");
+        sb.AppendLine($"Account Created,{EscapeCsvValue(data.Profile.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))}");
         sb.AppendLine();
 
         // Consent section
         sb.AppendLine("CONSENT DATA");
         sb.AppendLine("Field,Value");
         sb.AppendLine($"Email Marketing Consent,{data.Consent.EmailMarketingConsent}");
-        sb.AppendLine($"Consent Updated At,\"{data.Consent.EmailMarketingConsentUpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A"}\"");
+        sb.AppendLine($"Consent Updated At,{EscapeCsvValue(data.Consent.EmailMarketingConsentUpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss"))}");
         sb.AppendLine();
 
         // Account section
         sb.AppendLine("ACCOUNT DATA");
         sb.AppendLine("Field,Value");
-        sb.AppendLine($"Created At,\"{data.Account.CreatedAt:yyyy-MM-dd HH:mm:ss}\"");
-        sb.AppendLine($"Last Login,\"{data.Account.LastLoginAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A"}\"");
+        sb.AppendLine($"Created At,{EscapeCsvValue(data.Account.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))}");
+        sb.AppendLine($"Last Login,{EscapeCsvValue(data.Account.LastLoginAt?.ToString("yyyy-MM-dd HH:mm:ss"))}");
         sb.AppendLine($"Email Verified,{data.Account.IsEmailVerified}");
-        sb.AppendLine($"External Provider,\"{data.Account.ExternalProvider ?? "N/A"}\"");
+        sb.AppendLine($"External Provider,{EscapeCsvValue(data.Account.ExternalProvider)}");
         sb.AppendLine();
 
         // Orders section
@@ -213,7 +215,7 @@ public class GdprController : ControllerBase
             sb.AppendLine("Order Number,Order Date,Total Amount,Currency,Status,Payment Status");
             foreach (var order in data.Orders)
             {
-                sb.AppendLine($"\"{order.OrderNumber}\",\"{order.OrderDate:yyyy-MM-dd HH:mm:ss}\",{order.TotalAmount},\"{order.Currency}\",\"{order.Status}\",\"{order.PaymentStatus}\"");
+                sb.AppendLine($"{EscapeCsvValue(order.OrderNumber)},{EscapeCsvValue(order.OrderDate.ToString("yyyy-MM-dd HH:mm:ss"))},{order.TotalAmount},{EscapeCsvValue(order.Currency)},{EscapeCsvValue(order.Status)},{EscapeCsvValue(order.PaymentStatus)}");
             }
         }
         else
@@ -223,5 +225,30 @@ public class GdprController : ControllerBase
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Escapes CSV values to prevent CSV injection vulnerabilities.
+    /// </summary>
+    private string EscapeCsvValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "\"N/A\"";
+        }
+
+        // Escape quotes by doubling them and wrap in quotes if contains special chars
+        if (value.Contains("\"") || value.Contains(",") || value.Contains("\n") || value.Contains("\r") || 
+            value.StartsWith("=") || value.StartsWith("+") || value.StartsWith("-") || value.StartsWith("@"))
+        {
+            // Remove potentially dangerous formula characters at the start
+            if (value.StartsWith("=") || value.StartsWith("+") || value.StartsWith("-") || value.StartsWith("@"))
+            {
+                value = "'" + value; // Prefix with single quote to prevent formula execution
+            }
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        }
+        
+        return $"\"{value}\"";
     }
 }

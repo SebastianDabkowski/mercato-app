@@ -36,6 +36,11 @@ public class GdprService : IGdprService
             throw new InvalidOperationException("User not found");
         }
 
+        if (user.IsDeleted)
+        {
+            throw new InvalidOperationException("Cannot update consent for deleted account");
+        }
+
         user.EmailMarketingConsent = request.EmailMarketingConsent;
         user.EmailMarketingConsentUpdatedAt = DateTime.UtcNow;
 
@@ -76,6 +81,11 @@ public class GdprService : IGdprService
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null)
+        {
+            return null;
+        }
+
+        if (user.IsDeleted)
         {
             return null;
         }
@@ -131,6 +141,15 @@ public class GdprService : IGdprService
             };
         }
 
+        if (user.IsDeleted)
+        {
+            return new DeleteAccountResponse
+            {
+                Success = false,
+                Message = "Account is already deleted"
+            };
+        }
+
         // Verify confirmation email matches
         if (!string.Equals(user.Email, request.ConfirmationEmail, StringComparison.OrdinalIgnoreCase))
         {
@@ -156,6 +175,10 @@ public class GdprService : IGdprService
         user.PhoneNumber = null;
         user.EmailMarketingConsent = false;
 
+        // Clear password hash for security
+        await _userManager.RemovePasswordAsync(user);
+        await _userManager.AddPasswordAsync(user, Guid.NewGuid().ToString());
+
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
@@ -180,23 +203,15 @@ public class GdprService : IGdprService
     }
 
     /// <summary>
-    /// Retrieves user order data for export.
+    /// Retrieves user order data for export asynchronously.
     /// Note: This method needs to query the History module, which we'll integrate later.
     /// For now, it returns an empty list as a placeholder.
     /// </summary>
-    private List<OrderData> GetUserOrdersForExport(string userId)
+    private async Task<List<OrderData>> GetUserOrdersForExportAsync(string userId)
     {
-        // TODO: Query History module for user orders
-        // This will require cross-module communication
-        // For now, return empty list
+        // TODO: Query History module for user orders using async operations
+        // Example: return await _historyContext.Orders.Where(...).ToListAsync();
+        await Task.CompletedTask; // Placeholder to make method truly async
         return new List<OrderData>();
-    }
-
-    /// <summary>
-    /// Async wrapper for GetUserOrdersForExport to support future async integration.
-    /// </summary>
-    private Task<List<OrderData>> GetUserOrdersForExportAsync(string userId)
-    {
-        return Task.FromResult(GetUserOrdersForExport(userId));
     }
 }

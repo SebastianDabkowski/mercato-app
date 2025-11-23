@@ -9,7 +9,7 @@ namespace SD.Mercato.API.Controllers;
 /// Admin controller for GDPR compliance operations.
 /// </summary>
 [ApiController]
-[Route("api/admin/[controller]")]
+[Route("api/admin/gdpr")]
 [Authorize(Roles = "Administrator")]
 public class AdminGdprController : ControllerBase
 {

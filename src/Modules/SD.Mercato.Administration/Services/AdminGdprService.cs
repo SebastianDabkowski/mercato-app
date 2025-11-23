@@ -88,40 +88,26 @@ public class AdminGdprService : IAdminGdprService
     }
 
     /// <summary>
-    /// Get user orders for GDPR audit.
-    /// TODO: This requires querying the History module.
+    /// Get user orders for GDPR audit (async).
+    /// TODO: Query History module using async operations.
     /// </summary>
-    private List<OrderGdprData> GetUserOrders(string userId)
+    private async Task<List<OrderGdprData>> GetUserOrdersAsync(string userId)
     {
-        // TODO: Query History module for orders
-        // For now, return empty list
+        // TODO: Query History module for orders using async operations
+        // Example: return await _historyContext.Orders.Where(...).ToListAsync();
+        await Task.CompletedTask; // Placeholder to make method truly async
         return new List<OrderGdprData>();
     }
 
     /// <summary>
-    /// Async wrapper for GetUserOrders to support future async integration.
+    /// Get user notifications for GDPR audit (async).
+    /// TODO: Query Notification module using async operations.
     /// </summary>
-    private Task<List<OrderGdprData>> GetUserOrdersAsync(string userId)
+    private async Task<List<NotificationGdprData>> GetUserNotificationsAsync(string userId)
     {
-        return Task.FromResult(GetUserOrders(userId));
-    }
-
-    /// <summary>
-    /// Get user notifications for GDPR audit.
-    /// TODO: This requires querying the Notification module.
-    /// </summary>
-    private List<NotificationGdprData> GetUserNotifications(string userId)
-    {
-        // TODO: Query Notification module for notifications
-        // For now, return empty list
+        // TODO: Query Notification module using async operations
+        // Example: return await _notificationContext.Notifications.Where(...).ToListAsync();
+        await Task.CompletedTask; // Placeholder to make method truly async
         return new List<NotificationGdprData>();
-    }
-
-    /// <summary>
-    /// Async wrapper for GetUserNotifications to support future async integration.
-    /// </summary>
-    private Task<List<NotificationGdprData>> GetUserNotificationsAsync(string userId)
-    {
-        return Task.FromResult(GetUserNotifications(userId));
     }
 }

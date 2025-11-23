@@ -7,7 +7,6 @@ namespace SD.Mercato.Users.DTOs;
 /// </summary>
 public class UpdateConsentRequest
 {
-    [Required]
     public bool EmailMarketingConsent { get; set; }
 }
 
