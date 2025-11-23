@@ -19,6 +19,11 @@ public class UsersDbContext : IdentityDbContext<ApplicationUser, ApplicationRole
     /// </summary>
     public DbSet<SellerStaff> SellerStaff { get; set; } = null!;
 
+    /// <summary>
+    /// API tokens for partner integrations.
+    /// </summary>
+    public DbSet<ApiToken> ApiTokens { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -72,6 +77,40 @@ public class UsersDbContext : IdentityDbContext<ApplicationUser, ApplicationRole
 
             // Note: StoreId is a foreign key to the Store entity in the SellerPanel module
             // The actual FK constraint will be added at the database level or when modules are integrated
+        });
+
+        // Configure ApiToken
+        builder.Entity<ApiToken>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+
+            entity.Property(a => a.TokenHash)
+                .IsRequired()
+                .HasMaxLength(256);
+
+            entity.Property(a => a.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(a => a.Permissions)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            entity.Property(a => a.IpWhitelist)
+                .HasMaxLength(500);
+
+            entity.Property(a => a.Notes)
+                .HasMaxLength(1000);
+
+            entity.HasIndex(a => a.TokenHash)
+                .IsUnique();
+
+            entity.HasIndex(a => new { a.UserId, a.IsActive });
+
+            entity.HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

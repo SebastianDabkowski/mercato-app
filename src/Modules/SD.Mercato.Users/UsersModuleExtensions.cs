@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using SD.Mercato.Users.Authentication;
 using SD.Mercato.Users.Data;
 using SD.Mercato.Users.Models;
 using SD.Mercato.Users.Services;
@@ -105,10 +107,23 @@ public static class UsersModuleExtensions
             options.AddPolicy("RequireBuyerRole", policy => policy.RequireRole(RoleNames.Buyer));
             options.AddPolicy("RequireSellerRole", policy => policy.RequireRole(RoleNames.Seller));
             options.AddPolicy("RequireAdministratorRole", policy => policy.RequireRole(RoleNames.Administrator));
+            
+            // API Key authentication policy
+            options.AddPolicy("ApiKeyPolicy", policy =>
+            {
+                policy.AuthenticationSchemes.Add(ApiKeyAuthenticationDefaults.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+            });
         });
+
+        // Add API Key Authentication scheme
+        authBuilder.AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+            ApiKeyAuthenticationDefaults.AuthenticationScheme,
+            options => { });
 
         // Add services
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IApiTokenService, ApiTokenService>();
 
         return services;
     }
