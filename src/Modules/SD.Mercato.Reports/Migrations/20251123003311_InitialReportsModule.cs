@@ -81,7 +81,8 @@ namespace SD.Mercato.Reports.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_SellerInvoices_StoreId_PeriodStartDate_PeriodEndDate",
                 table: "SellerInvoices",
-                columns: new[] { "StoreId", "PeriodStartDate", "PeriodEndDate" });
+                columns: new[] { "StoreId", "PeriodStartDate", "PeriodEndDate" },
+                unique: true);
         }
 
         /// <inheritdoc />

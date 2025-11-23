@@ -49,6 +49,12 @@ public class SellerReportsController : ControllerBase
         _logger.LogInformation("Seller {UserId} requesting financial summary for Store {StoreId}",
             User.FindFirstValue(ClaimTypes.NameIdentifier), storeId);
 
+        // Validate date range
+        if (startDate > endDate)
+        {
+            return BadRequest(new { message = "Start date must be before or equal to end date" });
+        }
+
         // Verify store ownership
         if (!await VerifyStoreOwnershipAsync(storeId))
         {
@@ -60,8 +66,8 @@ public class SellerReportsController : ControllerBase
         var request = new SellerFinancialReportRequest
         {
             StoreId = storeId,
-            StartDate = startDate.Date, // Normalize to start of day
-            EndDate = endDate.Date.AddDays(1).AddTicks(-1) // End of day
+            StartDate = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc),
+            EndDate = DateTime.SpecifyKind(endDate.Date.AddDays(1), DateTimeKind.Utc) // Exclusive upper bound
         };
 
         var summary = await _reportService.GetFinancialSummaryAsync(request);
@@ -90,6 +96,12 @@ public class SellerReportsController : ControllerBase
         _logger.LogInformation("Seller {UserId} requesting commission breakdown for Store {StoreId}",
             User.FindFirstValue(ClaimTypes.NameIdentifier), storeId);
 
+        // Validate date range
+        if (startDate > endDate)
+        {
+            return BadRequest(new { message = "Start date must be before or equal to end date" });
+        }
+
         // Verify store ownership
         if (!await VerifyStoreOwnershipAsync(storeId))
         {
@@ -101,8 +113,8 @@ public class SellerReportsController : ControllerBase
         var request = new SellerFinancialReportRequest
         {
             StoreId = storeId,
-            StartDate = startDate.Date,
-            EndDate = endDate.Date.AddDays(1).AddTicks(-1)
+            StartDate = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc),
+            EndDate = DateTime.SpecifyKind(endDate.Date.AddDays(1), DateTimeKind.Utc) // Exclusive upper bound
         };
 
         var breakdown = await _reportService.GetCommissionBreakdownAsync(request);

@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject ILogger<SellerFinancialReport> Logger
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Financial Report - Seller Panel - Mercato</PageTitle>
 
@@ -387,8 +388,4 @@
             _ => "secondary"
         };
     }
-
-    // Placeholder JSRuntime - should be injected
-    [Inject]
-    private IJSRuntime JSRuntime { get; set; } = null!;
 }

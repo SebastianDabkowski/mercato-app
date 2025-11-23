@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SD.Mercato.Reports.Data;
 using SD.Mercato.Reports.DTOs;
 using SD.Mercato.Reports.Models;
+using System.Net;
 using System.Text;
 
 namespace SD.Mercato.Reports.Services;
@@ -111,6 +112,33 @@ public class InvoiceService : IInvoiceService
                 InvoiceNumber = invoiceNumber
             };
         }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
+                                           ex.InnerException?.Message.Contains("unique") == true)
+        {
+            // Handle race condition where duplicate invoice was created between check and insert
+            _logger.LogWarning(ex, "Duplicate invoice detected for Store {StoreId}, fetching existing", request.StoreId);
+            
+            var existingInvoice = await _context.SellerInvoices
+                .FirstOrDefaultAsync(i => i.StoreId == request.StoreId
+                    && i.PeriodStartDate == request.PeriodStartDate
+                    && i.PeriodEndDate == request.PeriodEndDate);
+            
+            if (existingInvoice != null)
+            {
+                return new GenerateInvoiceResponse
+                {
+                    Success = true,
+                    InvoiceId = existingInvoice.Id,
+                    InvoiceNumber = existingInvoice.InvoiceNumber
+                };
+            }
+            
+            return new GenerateInvoiceResponse
+            {
+                Success = false,
+                ErrorMessage = "An error occurred while generating the invoice"
+            };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating invoice for Store {StoreId}", request.StoreId);
@@ -146,10 +174,10 @@ public class InvoiceService : IInvoiceService
 
     private string GenerateInvoiceNumber(Guid storeId, DateTime periodStart)
     {
-        // Format: INV-YYYY-MM-STOREID_SHORT
+        // Format: INV-YYYY-MM-DD-STOREID_SHORT
         // Using "N" format to get GUID without hyphens for consistent length
         var storeIdShort = storeId.ToString("N")[..8].ToUpper();
-        return $"INV-{periodStart:yyyy-MM}-{storeIdShort}";
+        return $"INV-{periodStart:yyyy-MM-dd}-{storeIdShort}";
     }
 
     private string GenerateInvoiceHtml(SellerFinancialSummary summary, string invoiceNumber)
@@ -191,8 +219,8 @@ public class InvoiceService : IInvoiceService
         // Invoice Info
         html.AppendLine("    <div class=\"invoice-info\">");
         html.AppendLine("        <table>");
-        html.AppendLine($"            <tr><td>Invoice Number:</td><td>{invoiceNumber}</td></tr>");
-        html.AppendLine($"            <tr><td>Store Name:</td><td>{summary.StoreName}</td></tr>");
+        html.AppendLine($"            <tr><td>Invoice Number:</td><td>{WebUtility.HtmlEncode(invoiceNumber)}</td></tr>");
+        html.AppendLine($"            <tr><td>Store Name:</td><td>{WebUtility.HtmlEncode(summary.StoreName)}</td></tr>");
         html.AppendLine($"            <tr><td>Period:</td><td>{summary.PeriodStartDate:yyyy-MM-dd} to {summary.PeriodEndDate:yyyy-MM-dd}</td></tr>");
         html.AppendLine($"            <tr><td>Generated Date:</td><td>{DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC</td></tr>");
         html.AppendLine($"            <tr><td>Number of Orders:</td><td>{summary.OrderCount}</td></tr>");

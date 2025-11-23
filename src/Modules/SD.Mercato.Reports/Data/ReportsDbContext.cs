@@ -44,7 +44,7 @@ public class ReportsDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.InvoiceNumber).IsUnique();
             entity.HasIndex(e => e.StoreId);
-            entity.HasIndex(e => new { e.StoreId, e.PeriodStartDate, e.PeriodEndDate });
+            entity.HasIndex(e => new { e.StoreId, e.PeriodStartDate, e.PeriodEndDate }).IsUnique();
             
             entity.Property(e => e.TotalGMV).HasPrecision(18, 2);
             entity.Property(e => e.TotalProductValue).HasPrecision(18, 2);

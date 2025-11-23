@@ -120,15 +120,27 @@ public class SellerReportService : ISellerReportService
             // Build commission line items
             var lineItems = new List<CommissionLineItem>();
 
+            // Use a dictionary for O(1) lookups
+            var paymentLookup = subOrderPayments.ToDictionary(sp => sp.SubOrderId);
+
             foreach (var subOrder in subOrders)
             {
-                var payment = subOrderPayments.First(sp => sp.SubOrderId == subOrder.Id);
+                var payment = paymentLookup.GetValueOrDefault(subOrder.Id);
+                if (payment == null)
+                {
+                    _logger.LogWarning("No payment found for SubOrder {SubOrderId} in Store {StoreId}", 
+                        subOrder.Id, request.StoreId);
+                    continue;
+                }
 
                 foreach (var item in subOrder.Items)
                 {
                     // Calculate commission for this line item
-                    // Commission is applied proportionally based on item's share of total product value
-                    var itemCommission = item.Subtotal * payment.CommissionRate;
+                    // Proportionally allocate the SubOrder's total commission across line items
+                    // based on each item's contribution to the ProductTotal
+                    var itemCommission = (payment.ProductTotal > 0)
+                        ? (item.Subtotal / payment.ProductTotal) * payment.CommissionAmount
+                        : 0m;
 
                     lineItems.Add(new CommissionLineItem
                     {
