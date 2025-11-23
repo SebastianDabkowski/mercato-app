@@ -1,0 +1,31 @@
+@inject NavigationManager Navigation
+
+<div class="category-card" @onclick="() => NavigateToCategory()">
+    <div class="category-card-icon">
+        <i class="bi @IconClass"></i>
+    </div>
+    <h3 class="category-card-title">@Name</h3>
+    @if (ProductCount.HasValue)
+    {
+        <p class="category-card-count">@ProductCount items</p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid CategoryId { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public string IconClass { get; set; } = "bi-grid";
+
+    [Parameter]
+    public int? ProductCount { get; set; }
+
+    private void NavigateToCategory()
+    {
+        Navigation.NavigateTo($"/catalog?category={CategoryId}");
+    }
+}

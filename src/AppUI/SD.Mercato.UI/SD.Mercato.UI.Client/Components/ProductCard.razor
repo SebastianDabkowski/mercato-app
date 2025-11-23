@@ -1,0 +1,69 @@
+@using SD.Mercato.UI.Client.Services
+@inject NavigationManager Navigation
+
+<div class="product-card">
+    @if (Product.ImageUrls.Any())
+    {
+        <div class="product-card-image" @onclick="() => ViewProduct()">
+            <img src="@Product.ImageUrls.First()" alt="@Product.Title" />
+        </div>
+    }
+    else
+    {
+        <div class="product-card-image product-card-image-placeholder" @onclick="() => ViewProduct()">
+            <i class="bi bi-image"></i>
+        </div>
+    }
+    
+    <div class="product-card-body">
+        <h3 class="product-card-title" @onclick="() => ViewProduct()">@Product.Title</h3>
+        
+        @if (!string.IsNullOrEmpty(Product.StoreName))
+        {
+            <p class="product-card-store">@Product.StoreName</p>
+        }
+        
+        <div class="product-card-price">
+            <span class="price-amount">$@Product.Price.ToString("0.00")</span>
+        </div>
+        
+        @if (ShowAddToCart)
+        {
+            <button class="btn-add-to-cart" @onclick="OnAddToCartClick" disabled="@(Product.StockQuantity < 1)">
+                @if (Product.StockQuantity < 1)
+                {
+                    <span>Out of Stock</span>
+                }
+                else
+                {
+                    <i class="bi bi-cart-plus"></i>
+                    <span>Add to Cart</span>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public PublicProductDto Product { get; set; } = null!;
+
+    [Parameter]
+    public bool ShowAddToCart { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<Guid> OnAddToCart { get; set; }
+
+    private void ViewProduct()
+    {
+        Navigation.NavigateTo($"/catalog/{Product.Id}");
+    }
+
+    private async Task OnAddToCartClick()
+    {
+        if (OnAddToCart.HasDelegate)
+        {
+            await OnAddToCart.InvokeAsync(Product.Id);
+        }
+    }
+}
