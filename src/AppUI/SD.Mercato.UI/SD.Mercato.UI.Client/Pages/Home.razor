@@ -21,10 +21,11 @@
                     <i class="bi bi-search"></i>
                     <input type="text" 
                            placeholder="What are you looking for today?" 
+                           aria-label="Search products"
                            @bind="searchQuery"
                            @bind:event="oninput"
                            @onkeypress="HandleSearchKeyPress" />
-                    <button class="search-button" @onclick="PerformSearch">Search</button>
+                    <button type="button" class="search-button" @onclick="PerformSearch" aria-label="Search">Search</button>
                 </div>
             </div>
         </div>
@@ -198,7 +199,7 @@
             };
             
             var response = await ProductService.SearchProductsAsync(request);
-            popularProducts = response.Products.Take(8).ToList();
+            popularProducts = response.Products.ToList();
         }
         catch (Exception ex)
         {
@@ -227,7 +228,7 @@
             };
             
             var response = await ProductService.SearchProductsAsync(request);
-            newArrivals = response.Products.Take(8).ToList();
+            newArrivals = response.Products.ToList();
         }
         catch (Exception ex)
         {
