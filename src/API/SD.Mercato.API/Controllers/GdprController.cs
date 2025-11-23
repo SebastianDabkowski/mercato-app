@@ -106,13 +106,11 @@ public class GdprController : ControllerBase
             return Unauthorized();
         }
 
-        if (!string.Equals(request.Format, "json", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(request.Format, "csv", StringComparison.OrdinalIgnoreCase))
+        var format = request.Format.ToLowerInvariant();
+        if (format != "json" && format != "csv")
         {
             return BadRequest(new { message = "Invalid format. Supported formats: json, csv" });
         }
-
-        var format = request.Format.ToLowerInvariant();
 
         var exportData = await _gdprService.ExportUserDataAsync(userId, request);
         if (exportData == null)

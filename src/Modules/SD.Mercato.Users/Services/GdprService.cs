@@ -176,8 +176,8 @@ public class GdprService : IGdprService
         user.EmailMarketingConsent = false;
 
         // Clear password hash for security
+        // Note: RemovePasswordAsync already clears the hash, no need to add a new one
         await _userManager.RemovePasswordAsync(user);
-        await _userManager.AddPasswordAsync(user, Guid.NewGuid().ToString());
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
