@@ -249,14 +249,16 @@ public class ProductCsvService : IProductCsvService
                         }
                         catch (DbUpdateException dbEx)
                         {
-                            _logger.LogError(dbEx, "Database error saving batch at row {RowNumber}", rowNumber);
+                            _logger.LogError(dbEx, "Database error saving batch ending at row {RowNumber}", rowNumber);
+                            // When batch save fails, we can't determine which specific row caused it
+                            // Report it as a batch error
                             result.Errors.Add(new ProductCsvRowError
                             {
                                 RowNumber = rowNumber,
-                                SKU = row.SKU,
-                                ErrorMessages = new List<string> { "Database error: unable to save product" }
+                                SKU = "BATCH ERROR",
+                                ErrorMessages = new List<string> { $"Database error saving batch of {recordsInBatch} records. Batch not saved." }
                             });
-                            result.FailureCount++;
+                            result.FailureCount += recordsInBatch;
                             // Clear the context to recover from the error
                             _context.ChangeTracker.Clear();
                             recordsInBatch = 0;
@@ -289,6 +291,12 @@ public class ProductCsvService : IProductCsvService
                 catch (DbUpdateException dbEx)
                 {
                     _logger.LogError(dbEx, "Database error saving final batch for store {StoreId}", storeId);
+                    result.Errors.Add(new ProductCsvRowError
+                    {
+                        RowNumber = rowNumber - 1, // Last processed row
+                        SKU = "BATCH ERROR",
+                        ErrorMessages = new List<string> { $"Database error saving final batch of {recordsInBatch} records. Batch not saved." }
+                    });
                     result.FailureCount += recordsInBatch;
                 }
             }
