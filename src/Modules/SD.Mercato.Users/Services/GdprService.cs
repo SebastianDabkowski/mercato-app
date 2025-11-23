@@ -184,11 +184,19 @@ public class GdprService : IGdprService
     /// Note: This method needs to query the History module, which we'll integrate later.
     /// For now, it returns an empty list as a placeholder.
     /// </summary>
-    private async Task<List<OrderData>> GetUserOrdersForExportAsync(string userId)
+    private List<OrderData> GetUserOrdersForExport(string userId)
     {
         // TODO: Query History module for user orders
         // This will require cross-module communication
         // For now, return empty list
-        return await Task.FromResult(new List<OrderData>());
+        return new List<OrderData>();
+    }
+
+    /// <summary>
+    /// Async wrapper for GetUserOrdersForExport to support future async integration.
+    /// </summary>
+    private Task<List<OrderData>> GetUserOrdersForExportAsync(string userId)
+    {
+        return Task.FromResult(GetUserOrdersForExport(userId));
     }
 }

@@ -91,21 +91,37 @@ public class AdminGdprService : IAdminGdprService
     /// Get user orders for GDPR audit.
     /// TODO: This requires querying the History module.
     /// </summary>
-    private async Task<List<OrderGdprData>> GetUserOrdersAsync(string userId)
+    private List<OrderGdprData> GetUserOrders(string userId)
     {
         // TODO: Query History module for orders
         // For now, return empty list
-        return await Task.FromResult(new List<OrderGdprData>());
+        return new List<OrderGdprData>();
+    }
+
+    /// <summary>
+    /// Async wrapper for GetUserOrders to support future async integration.
+    /// </summary>
+    private Task<List<OrderGdprData>> GetUserOrdersAsync(string userId)
+    {
+        return Task.FromResult(GetUserOrders(userId));
     }
 
     /// <summary>
     /// Get user notifications for GDPR audit.
     /// TODO: This requires querying the Notification module.
     /// </summary>
-    private async Task<List<NotificationGdprData>> GetUserNotificationsAsync(string userId)
+    private List<NotificationGdprData> GetUserNotifications(string userId)
     {
         // TODO: Query Notification module for notifications
         // For now, return empty list
-        return await Task.FromResult(new List<NotificationGdprData>());
+        return new List<NotificationGdprData>();
+    }
+
+    /// <summary>
+    /// Async wrapper for GetUserNotifications to support future async integration.
+    /// </summary>
+    private Task<List<NotificationGdprData>> GetUserNotificationsAsync(string userId)
+    {
+        return Task.FromResult(GetUserNotifications(userId));
     }
 }
