@@ -1,0 +1,229 @@
+@page "/admin/audit-logs"
+@using SD.Mercato.UI.Client.Services
+@inject IAuditLogService AuditLogService
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrator")]
+
+<PageTitle>Audit Logs</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Audit Logs</h3>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Entity Type</label>
+                    <select class="form-select" @bind="selectedEntityType">
+                        <option value="">All</option>
+                        <option value="User">User</option>
+                        <option value="Store">Store</option>
+                        <option value="Category">Category</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Action</label>
+                    <input type="text" class="form-control" @bind="selectedAction" placeholder="e.g., UserActivated" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">From Date</label>
+                    <input type="date" class="form-control" @bind="fromDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To Date</label>
+                    <input type="date" class="form-control" @bind="toDate" />
+                </div>
+                <div class="col-md-12 d-flex align-items-end">
+                    <button class="btn btn-primary me-2" @onclick="SearchLogs">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                    <button class="btn btn-secondary" @onclick="ClearFilters">
+                        <i class="bi bi-x-circle"></i> Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (logsResponse != null && logsResponse.Logs.Any())
+    {
+        <!-- Logs Table -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Admin</th>
+                                <th>Action</th>
+                                <th>Entity Type</th>
+                                <th>Description</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in logsResponse.Logs)
+                            {
+                                <tr @onclick="() => ToggleDetails(log.Id)" style="cursor: pointer;">
+                                    <td>@log.PerformedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>
+                                        <small>@log.AdminEmail</small>
+                                    </td>
+                                    <td><span class="badge bg-info">@log.Action</span></td>
+                                    <td><span class="badge bg-secondary">@log.EntityType</span></td>
+                                    <td>
+                                        <small>@log.Description</small>
+                                    </td>
+                                    <td><small class="text-muted">@(log.IpAddress ?? "—")</small></td>
+                                </tr>
+                                @if (expandedLogId == log.Id && !string.IsNullOrEmpty(log.ChangesJson))
+                                {
+                                    <tr>
+                                        <td colspan="6" class="bg-light">
+                                            <div class="p-3">
+                                                <strong>Changes:</strong>
+                                                <pre class="mt-2 mb-0"><code>@log.ChangesJson</code></pre>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (logsResponse.TotalPages > 1)
+                {
+                    <nav aria-label="Page navigation" class="mt-3">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">Previous</button>
+                            </li>
+                            @for (int i = 1; i <= Math.Min(10, logsResponse.TotalPages); i++)
+                            {
+                                var pageNum = i;
+                                <li class="page-item @(pageNum == currentPage ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(pageNum)">@pageNum</button>
+                                </li>
+                            }
+                            @if (logsResponse.TotalPages > 10)
+                            {
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == logsResponse.TotalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">Next</button>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+
+                <div class="text-center text-muted mt-2">
+                    Showing @logsResponse.Logs.Count of @logsResponse.TotalCount logs
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            No audit logs found.
+        </div>
+    }
+</div>
+
+@code {
+    private PaginatedAuditLogsResponse? logsResponse;
+    private string selectedEntityType = string.Empty;
+    private string selectedAction = string.Empty;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private int currentPage = 1;
+    private readonly int pageSize = 50;
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+    private Guid? expandedLogId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Default to last 7 days
+        toDate = DateTime.Today;
+        fromDate = DateTime.Today.AddDays(-7);
+        await SearchLogs();
+    }
+
+    private async Task SearchLogs()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            string? entityType = string.IsNullOrEmpty(selectedEntityType) ? null : selectedEntityType;
+            string? action = string.IsNullOrEmpty(selectedAction) ? null : selectedAction;
+
+            logsResponse = await AuditLogService.SearchAuditLogsAsync(
+                null,
+                entityType,
+                null,
+                action,
+                fromDate,
+                toDate,
+                currentPage,
+                pageSize);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading audit logs: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || (logsResponse != null && page > logsResponse.TotalPages))
+            return;
+
+        currentPage = page;
+        await SearchLogs();
+    }
+
+    private void ToggleDetails(Guid logId)
+    {
+        expandedLogId = expandedLogId == logId ? null : logId;
+    }
+
+    private async Task ClearFilters()
+    {
+        selectedEntityType = string.Empty;
+        selectedAction = string.Empty;
+        fromDate = DateTime.Today.AddDays(-7);
+        toDate = DateTime.Today;
+        currentPage = 1;
+        await SearchLogs();
+    }
+}

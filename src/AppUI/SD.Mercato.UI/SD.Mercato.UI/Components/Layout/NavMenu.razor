@@ -1,4 +1,6 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">SD.Mercato.UI</a>
     </div>
@@ -25,6 +27,41 @@
                 <span class="bi bi-bag-fill-nav-menu" aria-hidden="true"></span> Shopping Cart
             </NavLink>
         </div>
+
+        <!-- Admin Section -->
+        <AuthorizeView Roles="Administrator">
+            <Authorized>
+                <hr class="my-2 text-white-50" />
+                <div class="nav-item px-3">
+                    <div class="text-white-50 small px-2 mb-1">ADMIN PANEL</div>
+                </div>
+                
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/users">
+                        <span class="bi bi-people-fill" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/stores">
+                        <span class="bi bi-shop" aria-hidden="true"></span> Stores
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/categories">
+                        <span class="bi bi-tags-fill" aria-hidden="true"></span> Categories
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/audit-logs">
+                        <span class="bi bi-journal-text" aria-hidden="true"></span> Audit Logs
+                    </NavLink>
+                </div>
+                <hr class="my-2 text-white-50" />
+            </Authorized>
+        </AuthorizeView>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="counter">

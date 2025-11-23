@@ -24,4 +24,10 @@ builder.Services.AddScoped<ISellerOrderService, SellerOrderService>();
 builder.Services.AddScoped<ICaseService, CaseService>();
 builder.Services.AddScoped<ReviewService>();
 
+// Add Admin services
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminStoreService, AdminStoreService>();
+builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
 await builder.Build().RunAsync();
