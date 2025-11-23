@@ -87,6 +87,22 @@ public class ProductCsvService : IProductCsvService
                         rowErrors.Add("Category is required");
                     }
 
+                    // Validate string field length constraints
+                    if (row.SKU != null && row.SKU.Length > 100)
+                    {
+                        rowErrors.Add("SKU exceeds maximum length of 100 characters");
+                    }
+
+                    if (row.Title != null && row.Title.Length > 200)
+                    {
+                        rowErrors.Add("Title exceeds maximum length of 200 characters");
+                    }
+
+                    if (row.Description != null && row.Description.Length > 5000)
+                    {
+                        rowErrors.Add("Description exceeds maximum length of 5000 characters");
+                    }
+
                     // Validate price
                     if (row.Price <= 0)
                     {
@@ -140,11 +156,19 @@ public class ProductCsvService : IProductCsvService
 
                     // Parse image URLs
                     List<string>? imageUrls = null;
+                    string imageUrlsJson = "[]";
                     if (!string.IsNullOrWhiteSpace(row.ImageUrls))
                     {
                         imageUrls = row.ImageUrls.Split('|', StringSplitOptions.RemoveEmptyEntries)
                             .Select(url => url.Trim())
                             .ToList();
+                        imageUrlsJson = JsonSerializer.Serialize(imageUrls);
+                        
+                        // Validate ImageUrls field length constraint
+                        if (imageUrlsJson.Length > 2000)
+                        {
+                            rowErrors.Add("Image URLs total length exceeds maximum allowed (2000 characters)");
+                        }
                     }
 
                     // Validate published products have at least one image
@@ -163,7 +187,6 @@ public class ProductCsvService : IProductCsvService
                             ErrorMessages = rowErrors
                         });
                         result.FailureCount++;
-                        rowNumber++;
                         continue;
                     }
 
@@ -182,9 +205,10 @@ public class ProductCsvService : IProductCsvService
                         product.Length = row.Length;
                         product.Width = row.Width;
                         product.Height = row.Height;
-                        product.ImageUrls = imageUrls != null ? JsonSerializer.Serialize(imageUrls) : "[]";
+                        product.ImageUrls = imageUrlsJson;
                         product.Status = row.Status;
                         product.UpdatedAt = DateTime.UtcNow;
+                        _context.Entry(product).State = EntityState.Modified;
                     }
                     else
                     {
@@ -204,7 +228,7 @@ public class ProductCsvService : IProductCsvService
                             Length = row.Length,
                             Width = row.Width,
                             Height = row.Height,
-                            ImageUrls = imageUrls != null ? JsonSerializer.Serialize(imageUrls) : "[]",
+                            ImageUrls = imageUrlsJson,
                             Status = row.Status,
                             CreatedAt = DateTime.UtcNow
                         };
@@ -212,14 +236,31 @@ public class ProductCsvService : IProductCsvService
                         existingProducts[row.SKU] = product;
                     }
 
-                    result.SuccessCount++;
                     recordsInBatch++;
 
                     // Save in batches to reduce transaction size and improve performance
                     if (recordsInBatch >= batchSize)
                     {
-                        await _context.SaveChangesAsync();
-                        recordsInBatch = 0;
+                        try
+                        {
+                            await _context.SaveChangesAsync();
+                            result.SuccessCount += recordsInBatch;
+                            recordsInBatch = 0;
+                        }
+                        catch (DbUpdateException dbEx)
+                        {
+                            _logger.LogError(dbEx, "Database error saving batch at row {RowNumber}", rowNumber);
+                            result.Errors.Add(new ProductCsvRowError
+                            {
+                                RowNumber = rowNumber,
+                                SKU = row.SKU,
+                                ErrorMessages = new List<string> { "Database error: unable to save product" }
+                            });
+                            result.FailureCount++;
+                            // Clear the context to recover from the error
+                            _context.ChangeTracker.Clear();
+                            recordsInBatch = 0;
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -240,7 +281,16 @@ public class ProductCsvService : IProductCsvService
             // Save any remaining changes from the last batch
             if (recordsInBatch > 0)
             {
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    result.SuccessCount += recordsInBatch;
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    _logger.LogError(dbEx, "Database error saving final batch for store {StoreId}", storeId);
+                    result.FailureCount += recordsInBatch;
+                }
             }
 
             result.Success = result.FailureCount == 0;

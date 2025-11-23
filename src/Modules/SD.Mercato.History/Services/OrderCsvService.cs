@@ -42,14 +42,14 @@ public class OrderCsvService : IOrderCsvService
             // Apply date filters
             if (request.FromDate.HasValue)
             {
-                query = query.Where(so => so.CreatedAt >= request.FromDate.Value);
+                query = query.Where(so => so.CreatedAt >= request.FromDate.Value.ToUniversalTime());
             }
 
             if (request.ToDate.HasValue)
             {
                 // Include the entire end date by adding one day (start of next day is exclusive upper bound)
-                var endOfDay = request.ToDate.Value.Date.AddDays(1);
-                query = query.Where(so => so.CreatedAt < endOfDay);
+                var endOfDayUtc = request.ToDate.Value.ToUniversalTime().Date.AddDays(1);
+                query = query.Where(so => so.CreatedAt < endOfDayUtc);
             }
 
             // Apply status filter

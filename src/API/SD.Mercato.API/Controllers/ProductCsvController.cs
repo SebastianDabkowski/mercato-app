@@ -58,11 +58,17 @@ public class ProductCsvController : ControllerBase
             return BadRequest(new { message = "No file provided or file is empty" });
         }
 
-        // Validate file extension and content type
-        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) ||
-            !file.ContentType.Equals("text/csv", StringComparison.OrdinalIgnoreCase))
+        // Validate file extension and content type (accept common CSV MIME types)
+        var allowedContentTypes = new[]
         {
-            return BadRequest(new { message = "File must be a valid CSV file (text/csv)" });
+            "text/csv",
+            "application/csv",
+            "application/vnd.ms-excel"
+        };
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) ||
+            !allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "File must be a valid CSV file (.csv extension with text/csv, application/csv, or application/vnd.ms-excel content type)" });
         }
 
         // Additional security: limit file size (e.g., 10MB)
@@ -100,8 +106,9 @@ public class ProductCsvController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing CSV import for store {StoreId}", store.Id);
-            return StatusCode(500, new { message = "An error occurred while processing the CSV file", error = ex.Message });
+            var correlationId = Guid.NewGuid();
+            _logger.LogError(ex, "Error processing CSV import for store {StoreId}. CorrelationId: {CorrelationId}", store.Id, correlationId);
+            return StatusCode(500, new { message = "An error occurred while processing the CSV file", correlationId });
         }
     }
 
@@ -148,8 +155,9 @@ public class ProductCsvController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error exporting products for store {StoreId}", store.Id);
-            return StatusCode(500, new { message = "An error occurred while exporting products", error = ex.Message });
+            var correlationId = Guid.NewGuid();
+            _logger.LogError(ex, "Error exporting products for store {StoreId}. CorrelationId: {CorrelationId}", store.Id, correlationId);
+            return StatusCode(500, new { message = "An error occurred while exporting products", correlationId });
         }
     }
 }

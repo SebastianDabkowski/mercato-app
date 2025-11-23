@@ -89,7 +89,10 @@ public class OrderCsvController : ControllerBase
 
             if (!result.Success)
             {
-                return StatusCode(500, new { message = result.ErrorMessage });
+                var correlationId = Guid.NewGuid();
+                _logger.LogError("Order CSV export failed for store {StoreId}. CorrelationId: {CorrelationId}. Error: {ErrorMessage}", 
+                    store.Id, correlationId, result.ErrorMessage);
+                return StatusCode(500, new { message = "An error occurred while exporting orders", correlationId });
             }
 
             if (result.RecordCount == 0)
@@ -109,12 +112,9 @@ public class OrderCsvController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error exporting orders for store {StoreId}", store.Id);
-            return StatusCode(500, new 
-            { 
-                message = "An error occurred while exporting orders", 
-                error = ex.Message 
-            });
+            var correlationId = Guid.NewGuid();
+            _logger.LogError(ex, "Error exporting orders for store {StoreId}. CorrelationId: {CorrelationId}", store.Id, correlationId);
+            return StatusCode(500, new { message = "An error occurred while exporting orders", correlationId });
         }
     }
 }
