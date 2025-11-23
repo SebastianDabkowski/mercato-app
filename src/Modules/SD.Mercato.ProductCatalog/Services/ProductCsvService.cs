@@ -55,7 +55,10 @@ public class ProductCsvService : IProductCsvService
                 .Where(p => p.StoreId == storeId)
                 .ToDictionaryAsync(p => p.SKU, p => p);
 
-            var records = csv.GetRecords<ProductCsvRow>().ToList();
+            // Process records in batches to avoid loading all into memory at once
+            var records = csv.GetRecords<ProductCsvRow>();
+            const int batchSize = 100;
+            var recordsInBatch = 0;
 
             foreach (var row in records)
             {
@@ -210,6 +213,14 @@ public class ProductCsvService : IProductCsvService
                     }
 
                     result.SuccessCount++;
+                    recordsInBatch++;
+
+                    // Save in batches to reduce transaction size and improve performance
+                    if (recordsInBatch >= batchSize)
+                    {
+                        await _context.SaveChangesAsync();
+                        recordsInBatch = 0;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -226,8 +237,8 @@ public class ProductCsvService : IProductCsvService
                 rowNumber++;
             }
 
-            // Save all changes
-            if (result.SuccessCount > 0)
+            // Save any remaining changes from the last batch
+            if (recordsInBatch > 0)
             {
                 await _context.SaveChangesAsync();
             }

@@ -47,9 +47,9 @@ public class OrderCsvService : IOrderCsvService
 
             if (request.ToDate.HasValue)
             {
-                // Include the entire end date
-                var endOfDay = request.ToDate.Value.Date.AddDays(1).AddTicks(-1);
-                query = query.Where(so => so.CreatedAt <= endOfDay);
+                // Include the entire end date by adding one day (start of next day is exclusive upper bound)
+                var endOfDay = request.ToDate.Value.Date.AddDays(1);
+                query = query.Where(so => so.CreatedAt < endOfDay);
             }
 
             // Apply status filter
@@ -97,6 +97,8 @@ public class OrderCsvService : IOrderCsvService
                 for (int i = 0; i < subOrder.Items.Count; i++)
                 {
                     var item = subOrder.Items[i];
+                    var isFirstRow = i == 0;
+
                     var row = new OrderCsvRow
                     {
                         OrderNumber = subOrder.Order?.OrderNumber ?? string.Empty,
@@ -112,12 +114,12 @@ public class OrderCsvService : IOrderCsvService
                         Quantity = item.Quantity,
                         UnitPrice = item.UnitPrice,
                         LineSubtotal = item.Subtotal,
-                        // Show totals and fees on first item row only, otherwise show 0
-                        ShippingCost = i == 0 ? shippingCost : 0,
-                        SubOrderTotal = i == 0 ? totalAmount : 0,
-                        PlatformCommission = i == 0 ? platformCommission : 0,
-                        ProcessingFee = i == 0 ? processingFee : 0,
-                        NetAmount = i == 0 ? netAmount : 0,
+                        // Show totals and fees on first item row only to avoid double-counting
+                        ShippingCost = isFirstRow ? shippingCost : 0,
+                        SubOrderTotal = isFirstRow ? totalAmount : 0,
+                        PlatformCommission = isFirstRow ? platformCommission : 0,
+                        ProcessingFee = isFirstRow ? processingFee : 0,
+                        NetAmount = isFirstRow ? netAmount : 0,
                         ShippingMethod = subOrder.ShippingMethod,
                         TrackingNumber = subOrder.TrackingNumber,
                         ShippedDate = subOrder.ShippedAt,

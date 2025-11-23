@@ -58,9 +58,18 @@ public class ProductCsvController : ControllerBase
             return BadRequest(new { message = "No file provided or file is empty" });
         }
 
-        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        // Validate file extension and content type
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) ||
+            !file.ContentType.Equals("text/csv", StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest(new { message = "File must be a CSV file" });
+            return BadRequest(new { message = "File must be a valid CSV file (text/csv)" });
+        }
+
+        // Additional security: limit file size (e.g., 10MB)
+        const long maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (file.Length > maxFileSize)
+        {
+            return BadRequest(new { message = "File size exceeds maximum allowed size of 10MB" });
         }
 
         // Get authenticated user
