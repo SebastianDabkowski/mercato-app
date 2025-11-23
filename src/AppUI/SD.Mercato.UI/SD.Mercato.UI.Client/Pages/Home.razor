@@ -1,0 +1,296 @@
+﻿@page "/"
+@rendermode InteractiveWebAssembly
+@using SD.Mercato.UI.Client.Services
+@using SD.Mercato.UI.Client.Components
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject ICartService CartService
+@inject NavigationManager Navigation
+@layout BuyerLayout
+
+<PageTitle>Mercato - Your Multi-Vendor Marketplace</PageTitle>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content">
+            <h1 class="hero-title">Discover Amazing Products</h1>
+            <p class="hero-subtitle">Shop from trusted sellers across our marketplace</p>
+            <div class="hero-search">
+                <div class="search-bar-large">
+                    <i class="bi bi-search"></i>
+                    <input type="text" 
+                           placeholder="What are you looking for today?" 
+                           aria-label="Search products"
+                           @bind="searchQuery"
+                           @bind:event="oninput"
+                           @onkeypress="HandleSearchKeyPress" />
+                    <button type="button" class="search-button" @onclick="PerformSearch" aria-label="Search">Search</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="categories-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Shop by Category</h2>
+            <p>Explore our wide range of product categories</p>
+        </div>
+        
+        @if (loadingCategories)
+        {
+            <div class="loading-state">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading categories...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="categories-grid">
+                @foreach (var category in featuredCategories)
+                {
+                    <CategoryCard 
+                        CategoryId="@category.Id" 
+                        Name="@category.Name" 
+                        IconClass="@GetCategoryIcon(category.Name)" />
+                }
+            </div>
+        }
+        
+        <div class="section-footer">
+            <a href="/catalog" class="btn-view-all">View All Products</a>
+        </div>
+    </div>
+</section>
+
+<!-- Popular Products Section -->
+<section class="products-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Popular Products</h2>
+            <p>Best-selling items loved by our customers</p>
+        </div>
+        
+        @if (loadingPopular)
+        {
+            <div class="loading-state">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading products...</span>
+                </div>
+            </div>
+        }
+        else if (popularProducts.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>No products available yet</p>
+            </div>
+        }
+        else
+        {
+            <div class="products-grid">
+                @foreach (var product in popularProducts)
+                {
+                    <ProductCard 
+                        Product="@product" 
+                        ShowAddToCart="true" 
+                        OnAddToCart="HandleAddToCart" />
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<!-- New Arrivals Section -->
+<section class="products-section bg-light">
+    <div class="container">
+        <div class="section-header">
+            <h2>New Arrivals</h2>
+            <p>Fresh products just added to our marketplace</p>
+        </div>
+        
+        @if (loadingNewArrivals)
+        {
+            <div class="loading-state">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading products...</span>
+                </div>
+            </div>
+        }
+        else if (newArrivals.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>No new arrivals yet</p>
+            </div>
+        }
+        else
+        {
+            <div class="products-grid">
+                @foreach (var product in newArrivals)
+                {
+                    <ProductCard 
+                        Product="@product" 
+                        ShowAddToCart="true" 
+                        OnAddToCart="HandleAddToCart" />
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private List<CategoryDto> featuredCategories = new();
+    private List<PublicProductDto> popularProducts = new();
+    private List<PublicProductDto> newArrivals = new();
+    private string searchQuery = string.Empty;
+    
+    private bool loadingCategories = true;
+    private bool loadingPopular = true;
+    private bool loadingNewArrivals = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            LoadCategoriesAsync(),
+            LoadPopularProductsAsync(),
+            LoadNewArrivalsAsync()
+        );
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            var allCategories = await CategoryService.GetActiveCategoriesAsync();
+            // Show up to 6 top-level categories
+            featuredCategories = allCategories
+                .Where(c => c.ParentCategoryId == null)
+                .Take(6)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
+            Console.WriteLine($"Error loading categories: {ex.Message}");
+        }
+        finally
+        {
+            loadingCategories = false;
+        }
+    }
+
+    private async Task LoadPopularProductsAsync()
+    {
+        try
+        {
+            // TODO: Implement proper popularity sorting based on sales/views from analytics
+            // For now, we'll get products sorted by creation date (newest)
+            var request = new ProductSearchRequest
+            {
+                PageNumber = 1,
+                PageSize = 8,
+                SortBy = "created",
+                SortDirection = "desc"
+            };
+            
+            var response = await ProductService.SearchProductsAsync(request);
+            popularProducts = response.Products.ToList();
+        }
+        catch (Exception ex)
+        {
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
+            Console.WriteLine($"Error loading popular products: {ex.Message}");
+        }
+        finally
+        {
+            loadingPopular = false;
+        }
+    }
+
+    private async Task LoadNewArrivalsAsync()
+    {
+        try
+        {
+            // Get different products than popular by using an offset
+            // TODO: This is a temporary solution. Implement proper "new arrivals" logic
+            // based on product creation date within last N days
+            var request = new ProductSearchRequest
+            {
+                PageNumber = 2, // Offset to get different products
+                PageSize = 8,
+                SortBy = "created",
+                SortDirection = "desc"
+            };
+            
+            var response = await ProductService.SearchProductsAsync(request);
+            newArrivals = response.Products.ToList();
+        }
+        catch (Exception ex)
+        {
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
+            Console.WriteLine($"Error loading new arrivals: {ex.Message}");
+        }
+        finally
+        {
+            loadingNewArrivals = false;
+        }
+    }
+
+    private async Task HandleAddToCart(Guid productId)
+    {
+        try
+        {
+            await CartService.AddItemAsync(new AddToCartRequest
+            {
+                ProductId = productId,
+                Quantity = 1
+            });
+            // TODO: Implement proper success/error notification system for user feedback
+        }
+        catch (Exception ex)
+        {
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
+            Console.WriteLine($"Error adding to cart: {ex.Message}");
+        }
+    }
+
+    private void HandleSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            PerformSearch();
+        }
+    }
+
+    private void PerformSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            Navigation.NavigateTo($"/catalog?search={Uri.EscapeDataString(searchQuery)}");
+        }
+    }
+
+    private string GetCategoryIcon(string categoryName)
+    {
+        // TODO: Store icon class names in the database with category records
+        // This is a temporary solution for MVP. Icon mapping should be configurable
+        // to avoid maintenance issues when category names change.
+        return categoryName.ToLower() switch
+        {
+            var name when name.Contains("electronic") => "bi-laptop",
+            var name when name.Contains("fashion") || name.Contains("clothing") => "bi-bag",
+            var name when name.Contains("home") || name.Contains("furniture") => "bi-house",
+            var name when name.Contains("book") => "bi-book",
+            var name when name.Contains("sport") || name.Contains("fitness") => "bi-trophy",
+            var name when name.Contains("toy") || name.Contains("game") => "bi-controller",
+            var name when name.Contains("food") || name.Contains("grocery") => "bi-basket",
+            var name when name.Contains("beauty") || name.Contains("health") => "bi-heart-pulse",
+            _ => "bi-grid-3x3"
+        };
+    }
+}

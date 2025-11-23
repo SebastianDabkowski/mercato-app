@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.AspNetCore.Components.Authorization;
 using Blazored.LocalStorage;
 using SD.Mercato.UI.Client.Services;
 
@@ -15,6 +16,11 @@ builder.Services.AddScoped(sp => new HttpClient
 
 // Add AuthService
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Add authorization services
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthenticationStateProvider>());
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IStoreService, StoreService>();

@@ -1,0 +1,204 @@
+@inherits LayoutComponentBase
+@using SD.Mercato.UI.Client.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="buyer-layout">
+    <header class="buyer-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-logo">
+                    <a href="/" class="logo-link">
+                        <i class="bi bi-shop"></i>
+                        <span class="logo-text">Mercato</span>
+                    </a>
+                </div>
+
+                <div class="header-search">
+                    <div class="search-bar">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" 
+                               class="search-input" 
+                               placeholder="Search for products..." 
+                               aria-label="Search for products"
+                               @bind="searchQuery"
+                               @bind:event="oninput"
+                               @onkeypress="HandleSearchKeyPress" />
+                        @if (!string.IsNullOrWhiteSpace(searchQuery))
+                        {
+                            <button class="search-clear" @onclick="ClearSearch" aria-label="Clear search">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <AuthorizeView>
+                        <Authorized>
+                            <a href="/cart" class="header-action-link">
+                                <i class="bi bi-cart3"></i>
+                                <span class="action-text">Cart</span>
+                            </a>
+                            <div class="header-divider"></div>
+                            <a href="/profile" class="header-action-link">
+                                <i class="bi bi-person-circle"></i>
+                                <span class="action-text">Account</span>
+                            </a>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a href="/login" class="header-action-link">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                <span class="action-text">Sign In</span>
+                            </a>
+                            <a href="/register" class="btn-register">Register</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+
+                <button class="mobile-menu-toggle" 
+                        @onclick="ToggleMobileMenu"
+                        aria-label="@(mobileMenuOpen ? "Close menu" : "Open menu")"
+                        aria-expanded="@mobileMenuOpen">
+                    <i class="bi @(mobileMenuOpen ? "bi-x" : "bi-list")"></i>
+                </button>
+            </div>
+
+            <nav class="header-nav">
+                <a href="/catalog" class="nav-link">All Products</a>
+                <a href="/catalog?sort=new" class="nav-link">New Arrivals</a>
+                <a href="/catalog?sort=popular" class="nav-link">Popular</a>
+                
+                <AuthorizeView Roles="Seller">
+                    <Authorized>
+                        <div class="nav-divider"></div>
+                        <a href="/seller/dashboard" class="nav-link seller-link">
+                            <i class="bi bi-speedometer2"></i> Seller Panel
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+                
+                <AuthorizeView Roles="Administrator">
+                    <Authorized>
+                        <div class="nav-divider"></div>
+                        <a href="/admin/dashboard" class="nav-link admin-link">
+                            <i class="bi bi-shield-lock"></i> Admin Panel
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </nav>
+        </div>
+
+        @if (mobileMenuOpen)
+        {
+            <div class="mobile-menu">
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="/cart" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-cart3"></i> Shopping Cart
+                        </a>
+                        <a href="/profile" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-person-circle"></i> My Account
+                        </a>
+                        <a href="/orders" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-box-seam"></i> My Orders
+                        </a>
+                        <div class="mobile-menu-divider"></div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/login" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-box-arrow-in-right"></i> Sign In
+                        </a>
+                        <a href="/register" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-person-plus"></i> Register
+                        </a>
+                        <div class="mobile-menu-divider"></div>
+                    </NotAuthorized>
+                </AuthorizeView>
+                
+                <a href="/catalog" class="mobile-menu-item" @onclick="CloseMobileMenu">All Products</a>
+                <a href="/catalog?sort=new" class="mobile-menu-item" @onclick="CloseMobileMenu">New Arrivals</a>
+                <a href="/catalog?sort=popular" class="mobile-menu-item" @onclick="CloseMobileMenu">Popular</a>
+                
+                <AuthorizeView Roles="Seller">
+                    <Authorized>
+                        <div class="mobile-menu-divider"></div>
+                        <a href="/seller/dashboard" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-speedometer2"></i> Seller Panel
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+                
+                <AuthorizeView Roles="Administrator">
+                    <Authorized>
+                        <div class="mobile-menu-divider"></div>
+                        <a href="/admin/dashboard" class="mobile-menu-item" @onclick="CloseMobileMenu">
+                            <i class="bi bi-shield-lock"></i> Admin Panel
+                        </a>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        }
+    </header>
+
+    <main class="buyer-main">
+        @Body
+    </main>
+
+    <footer class="buyer-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About Mercato</h4>
+                    <p>Your trusted multi-vendor marketplace for quality products from independent sellers.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="/catalog">Browse Products</a></li>
+                        <li><a href="/register">Become a Seller</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; @DateTime.Now.Year Mercato. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private string searchQuery = string.Empty;
+    private bool mobileMenuOpen = false;
+
+    private void HandleSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchQuery))
+        {
+            Navigation.NavigateTo($"/catalog?search={Uri.EscapeDataString(searchQuery)}");
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+    }
+
+    private void ToggleMobileMenu()
+    {
+        mobileMenuOpen = !mobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        mobileMenuOpen = false;
+    }
+}

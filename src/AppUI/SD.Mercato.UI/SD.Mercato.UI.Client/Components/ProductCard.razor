@@ -1,0 +1,78 @@
+@using SD.Mercato.UI.Client.Services
+
+<div class="product-card">
+    <a href="/catalog/@Product.Id" class="product-card-image-link">
+        @if (Product.ImageUrls.Any())
+        {
+            <div class="product-card-image">
+                <img src="@Product.ImageUrls.First()" alt="@Product.Title" />
+            </div>
+        }
+        else
+        {
+            <div class="product-card-image product-card-image-placeholder">
+                <i class="bi bi-image"></i>
+            </div>
+        }
+    </a>
+    
+    <div class="product-card-body">
+        <a href="/catalog/@Product.Id" class="product-card-title-link">
+            <h3 class="product-card-title">@Product.Title</h3>
+        </a>
+        
+        @if (!string.IsNullOrEmpty(Product.StoreName))
+        {
+            <p class="product-card-store">@Product.StoreName</p>
+        }
+        
+        <div class="product-card-price">
+            <span class="price-amount">$@Product.Price.ToString("0.00")</span>
+        </div>
+        
+        @if (ShowAddToCart)
+        {
+            <button class="btn-add-to-cart" @onclick="OnAddToCartClick" disabled="@(Product.StockQuantity < 1)">
+                @if (Product.StockQuantity < 1)
+                {
+                    <span>Out of Stock</span>
+                }
+                else
+                {
+                    <i class="bi bi-cart-plus"></i>
+                    <span>Add to Cart</span>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The product data to display in the card.
+    /// </summary>
+    [Parameter]
+    [EditorRequired]
+    public required PublicProductDto Product { get; set; }
+
+    /// <summary>
+    /// Determines whether to show the "Add to Cart" button.
+    /// </summary>
+    [Parameter]
+    public bool ShowAddToCart { get; set; } = true;
+
+    /// <summary>
+    /// Callback invoked when the "Add to Cart" button is clicked.
+    /// Receives the product ID as a parameter.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Guid> OnAddToCart { get; set; }
+
+    private async Task OnAddToCartClick()
+    {
+        if (OnAddToCart.HasDelegate)
+        {
+            await OnAddToCart.InvokeAsync(Product.Id);
+        }
+    }
+}

@@ -1,0 +1,36 @@
+<a href="/catalog?category=@CategoryId" class="category-card">
+    <div class="category-card-icon">
+        <i class="bi @IconClass"></i>
+    </div>
+    <h3 class="category-card-title">@Name</h3>
+    @if (ProductCount.HasValue)
+    {
+        <p class="category-card-count">@ProductCount items</p>
+    }
+</a>
+
+@code {
+    /// <summary>
+    /// The unique identifier of the category.
+    /// </summary>
+    [Parameter]
+    public Guid CategoryId { get; set; }
+
+    /// <summary>
+    /// The display name of the category.
+    /// </summary>
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The Bootstrap icon class to display for this category (e.g., "bi-laptop").
+    /// </summary>
+    [Parameter]
+    public string IconClass { get; set; } = "bi-grid";
+
+    /// <summary>
+    /// Optional product count to display for this category.
+    /// </summary>
+    [Parameter]
+    public int? ProductCount { get; set; }
+}
