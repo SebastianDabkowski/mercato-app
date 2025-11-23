@@ -66,11 +66,8 @@ public class SellerDashboardService : ISellerDashboardService
             var orderCount = await subOrdersQuery.CountAsync();
 
             // Calculate best-selling products with projection to reduce memory load
-            var productSales = await _historyContext.SubOrders
-                .Where(so => so.StoreId == request.StoreId
-                    && so.CreatedAt >= request.StartDate
-                    && so.CreatedAt < request.EndDate
-                    && revenueStatuses.Contains(so.Status))
+            // Reuse the same query to ensure consistent filtering
+            var productSales = await subOrdersQuery
                 .SelectMany(so => so.Items)
                 .GroupBy(item => new 
                 { 

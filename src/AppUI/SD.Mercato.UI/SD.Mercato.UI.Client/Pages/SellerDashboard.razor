@@ -206,11 +206,12 @@
             if (stores != null && stores.Any())
             {
                 // MVP assumes one active store per seller
-                if (stores.Count() > 1)
+                // Use Skip(1).Any() for efficient multiple stores detection
+                if (stores.Skip(1).Any())
                 {
                     Logger.LogWarning(
                         "Seller has multiple active stores. StoreCount: {StoreCount}", 
-                        stores.Count());
+                        stores.Count);
                     errorMessage = "Data error: Multiple active stores detected for your account. Please contact support.";
                     storeId = null;
                 }
