@@ -71,8 +71,10 @@ public class SellerDashboardController : ControllerBase
             var request = new SellerDashboardRequest
             {
                 StoreId = storeId,
+                // Convert to UTC and create exclusive upper bound (end of day)
+                // StartDate is inclusive (beginning of day), EndDate+1 is exclusive (beginning of next day)
                 StartDate = DateTime.SpecifyKind(startDate.Date, DateTimeKind.Utc),
-                EndDate = DateTime.SpecifyKind(endDate.Date.AddDays(1), DateTimeKind.Utc) // Exclusive upper bound
+                EndDate = DateTime.SpecifyKind(endDate.Date.AddDays(1), DateTimeKind.Utc)
             };
 
             var metrics = await _dashboardService.GetDashboardMetricsAsync(request);

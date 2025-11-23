@@ -155,6 +155,7 @@ public class AdminDashboardService : IAdminDashboardService
 
     /// <summary>
     /// Counts new user registrations in a specific role for a date range.
+    /// Uses efficient JOIN to avoid N+1 query pattern.
     /// </summary>
     private async Task<int> CountNewUsersInRoleAsync(string roleName, DateTime startDate, DateTime endDate)
     {
@@ -168,16 +169,15 @@ public class AdminDashboardService : IAdminDashboardService
             return 0;
         }
 
-        // Count users created in the date range who have this role
-        var userIds = await _usersContext.UserRoles
-            .Where(ur => ur.RoleId == role.Id)
-            .Select(ur => ur.UserId)
-            .ToListAsync();
-
+        // Count users created in the date range who have this role (using JOIN for efficiency)
         var count = await _usersContext.Users
-            .Where(u => userIds.Contains(u.Id) 
-                && u.CreatedAt >= startDate 
-                && u.CreatedAt < endDate)
+            .Join(_usersContext.UserRoles,
+                u => u.Id,
+                ur => ur.UserId,
+                (u, ur) => new { User = u, UserRole = ur })
+            .Where(x => x.UserRole.RoleId == role.Id
+                && x.User.CreatedAt >= startDate
+                && x.User.CreatedAt < endDate)
             .CountAsync();
 
         return count;

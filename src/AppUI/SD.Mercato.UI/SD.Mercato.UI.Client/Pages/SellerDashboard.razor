@@ -202,12 +202,15 @@
     {
         try
         {
-            var store = await StoreService.GetActiveStoresAsync();
-            if (store != null && store.Any())
+            var stores = await StoreService.GetActiveStoresAsync();
+            if (stores != null && stores.Any())
             {
-                storeId = store.First().Id;
+                // TODO: Handle multiple stores per seller if business rules change
+                // Currently assumes one active store per seller
+                storeId = stores.FirstOrDefault()?.Id;
             }
-            else
+            
+            if (!storeId.HasValue)
             {
                 errorMessage = "You don't have an active store. Please set up your store first.";
             }
