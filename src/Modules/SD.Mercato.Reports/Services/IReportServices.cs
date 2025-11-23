@@ -60,3 +60,25 @@ public interface ICommissionConfigService
     /// </summary>
     Task<GlobalCommissionConfigDto> UpdateConfigAsync(UpdateCommissionConfigRequest request);
 }
+
+/// <summary>
+/// Service for generating admin dashboard metrics.
+/// </summary>
+public interface IAdminDashboardService
+{
+    /// <summary>
+    /// Gets admin dashboard metrics for the marketplace.
+    /// </summary>
+    Task<AdminDashboardMetrics> GetDashboardMetricsAsync();
+}
+
+/// <summary>
+/// Service for generating seller dashboard metrics.
+/// </summary>
+public interface ISellerDashboardService
+{
+    /// <summary>
+    /// Gets seller dashboard metrics for a specific period.
+    /// </summary>
+    Task<SellerDashboardMetrics?> GetDashboardMetricsAsync(SellerDashboardRequest request);
+}

@@ -29,6 +29,8 @@ public static class ReportsModuleExtensions
         services.AddScoped<ISellerReportService, SellerReportService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<ICommissionConfigService, CommissionConfigService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<ISellerDashboardService, SellerDashboardService>();
 
         return services;
     }
