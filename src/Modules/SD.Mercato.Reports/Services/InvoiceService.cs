@@ -147,7 +147,8 @@ public class InvoiceService : IInvoiceService
     private string GenerateInvoiceNumber(Guid storeId, DateTime periodStart)
     {
         // Format: INV-YYYY-MM-STOREID_SHORT
-        var storeIdShort = storeId.ToString()[..8].ToUpper();
+        // Using "N" format to get GUID without hyphens for consistent length
+        var storeIdShort = storeId.ToString("N")[..8].ToUpper();
         return $"INV-{periodStart:yyyy-MM}-{storeIdShort}";
     }
 
@@ -205,7 +206,7 @@ public class InvoiceService : IInvoiceService
         html.AppendLine("            <thead>");
         html.AppendLine("                <tr>");
         html.AppendLine("                    <th>Description</th>");
-        html.AppendLine("                    <th class=\"amount\">Amount ({summary.Currency})</th>");
+        html.AppendLine($"                    <th class=\"amount\">Amount ({summary.Currency})</th>");
         html.AppendLine("                </tr>");
         html.AppendLine("            </thead>");
         html.AppendLine("            <tbody>");
@@ -222,7 +223,7 @@ public class InvoiceService : IInvoiceService
         // Footer
         html.AppendLine("    <div class=\"footer\">");
         html.AppendLine("        <p>This is a system-generated statement. For questions, please contact support@mercato.com</p>");
-        html.AppendLine("        <p>&copy; 2024 Mercato Platform. All rights reserved.</p>");
+        html.AppendLine($"        <p>&copy; {DateTime.UtcNow.Year} Mercato Platform. All rights reserved.</p>");
         html.AppendLine("    </div>");
 
         html.AppendLine("</body>");

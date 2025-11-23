@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SD.Mercato.Reports.DTOs;
 using SD.Mercato.Reports.Services;
+using SD.Mercato.SellerPanel.Services;
 using System.Security.Claims;
 
 namespace SD.Mercato.API.Controllers;
@@ -17,15 +18,18 @@ public class SellerReportsController : ControllerBase
 {
     private readonly ISellerReportService _reportService;
     private readonly IInvoiceService _invoiceService;
+    private readonly IStoreService _storeService;
     private readonly ILogger<SellerReportsController> _logger;
 
     public SellerReportsController(
         ISellerReportService reportService,
         IInvoiceService invoiceService,
+        IStoreService storeService,
         ILogger<SellerReportsController> logger)
     {
         _reportService = reportService;
         _invoiceService = invoiceService;
+        _storeService = storeService;
         _logger = logger;
     }
 
@@ -45,9 +49,13 @@ public class SellerReportsController : ControllerBase
         _logger.LogInformation("Seller {UserId} requesting financial summary for Store {StoreId}",
             User.FindFirstValue(ClaimTypes.NameIdentifier), storeId);
 
-        // TODO: Verify that the authenticated user owns this store
-        // This would require querying the Store to get OwnerId and comparing with User.Id
-        // For now, we trust the storeId parameter but this is a security concern
+        // Verify store ownership
+        if (!await VerifyStoreOwnershipAsync(storeId))
+        {
+            _logger.LogWarning("Unauthorized access attempt to Store {StoreId} by User {UserId}",
+                storeId, User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return Forbid();
+        }
 
         var request = new SellerFinancialReportRequest
         {
@@ -82,7 +90,13 @@ public class SellerReportsController : ControllerBase
         _logger.LogInformation("Seller {UserId} requesting commission breakdown for Store {StoreId}",
             User.FindFirstValue(ClaimTypes.NameIdentifier), storeId);
 
-        // TODO: Verify store ownership
+        // Verify store ownership
+        if (!await VerifyStoreOwnershipAsync(storeId))
+        {
+            _logger.LogWarning("Unauthorized access attempt to Store {StoreId} by User {UserId}",
+                storeId, User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return Forbid();
+        }
 
         var request = new SellerFinancialReportRequest
         {
@@ -108,7 +122,13 @@ public class SellerReportsController : ControllerBase
         _logger.LogInformation("Seller {UserId} generating invoice for Store {StoreId}",
             userId, request.StoreId);
 
-        // TODO: Verify store ownership
+        // Verify store ownership
+        if (!await VerifyStoreOwnershipAsync(request.StoreId))
+        {
+            _logger.LogWarning("Unauthorized access attempt to Store {StoreId} by User {UserId}",
+                request.StoreId, userId);
+            return Forbid();
+        }
 
         var requestWithUser = request with { GeneratedBy = userId };
 
@@ -133,7 +153,13 @@ public class SellerReportsController : ControllerBase
         _logger.LogInformation("Seller {UserId} requesting invoices for Store {StoreId}",
             User.FindFirstValue(ClaimTypes.NameIdentifier), storeId);
 
-        // TODO: Verify store ownership
+        // Verify store ownership
+        if (!await VerifyStoreOwnershipAsync(storeId))
+        {
+            _logger.LogWarning("Unauthorized access attempt to Store {StoreId} by User {UserId}",
+                storeId, User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return Forbid();
+        }
 
         var invoices = await _invoiceService.GetStoreInvoicesAsync(storeId);
 
@@ -158,7 +184,13 @@ public class SellerReportsController : ControllerBase
             return NotFound(new { message = "Invoice not found" });
         }
 
-        // TODO: Verify that the invoice belongs to the authenticated seller's store
+        // Verify that the invoice belongs to the authenticated seller's store
+        if (!await VerifyStoreOwnershipAsync(invoice.StoreId))
+        {
+            _logger.LogWarning("Unauthorized access attempt to Invoice {InvoiceId} by User {UserId}",
+                invoiceId, User.FindFirstValue(ClaimTypes.NameIdentifier));
+            return Forbid();
+        }
 
         var html = await _invoiceService.GetInvoiceHtmlAsync(invoiceId);
 
@@ -168,5 +200,20 @@ public class SellerReportsController : ControllerBase
         }
 
         return Content(html, "text/html");
+    }
+
+    /// <summary>
+    /// Verifies that the authenticated user owns the specified store.
+    /// </summary>
+    private async Task<bool> VerifyStoreOwnershipAsync(Guid storeId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return false;
+        }
+
+        var store = await _storeService.GetStoreByIdAsync(storeId);
+        return store != null && store.OwnerUserId == userId;
     }
 }

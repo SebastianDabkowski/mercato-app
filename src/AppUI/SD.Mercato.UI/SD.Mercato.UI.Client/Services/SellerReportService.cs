@@ -232,11 +232,9 @@ public class SellerReportService : ISellerReportService
 
         try
         {
-            // TODO: This should fetch the seller's store ID from the API
-            // For now, we'll need to add an endpoint to get the current seller's store
-            // GET /api/seller/my-store
-            var response = await _httpClient.GetFromJsonAsync<MyStoreResponse>("api/stores/my-store");
-            _cachedStoreId = response?.StoreId;
+            // Get the seller's store from the API
+            var response = await _httpClient.GetFromJsonAsync<StoreDto>("api/stores/my-store");
+            _cachedStoreId = response?.Id;
             return _cachedStoreId;
         }
         catch (Exception ex)
@@ -246,8 +244,8 @@ public class SellerReportService : ISellerReportService
         }
     }
 
-    private class MyStoreResponse
+    private class StoreDto
     {
-        public Guid StoreId { get; set; }
+        public Guid Id { get; set; }
     }
 }

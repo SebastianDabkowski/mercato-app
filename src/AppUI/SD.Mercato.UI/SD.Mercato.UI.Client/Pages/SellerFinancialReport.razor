@@ -3,6 +3,7 @@
 @inject ISellerReportService ReportService
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
+@inject ILogger<SellerFinancialReport> Logger
 
 <PageTitle>Financial Report - Seller Panel - Mercato</PageTitle>
 
@@ -357,8 +358,7 @@
         }
         catch (Exception ex)
         {
-            // Log error but don't show to user since this is background load
-            Console.WriteLine($"Failed to load invoices: {ex.Message}");
+            Logger.LogError(ex, "Failed to load invoices");
         }
     }
 
