@@ -29,6 +29,7 @@ public static class AdministrationModuleExtensions
         services.AddScoped<IAdminUserService, AdminUserService>();
         services.AddScoped<IAdminStoreService, AdminStoreService>();
         services.AddScoped<IAdminCategoryService, AdminCategoryService>();
+        services.AddScoped<IAdminGdprService, AdminGdprService>();
 
         return services;
     }

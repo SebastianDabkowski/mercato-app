@@ -124,6 +124,7 @@ public static class UsersModuleExtensions
         // Add services
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IApiTokenService, ApiTokenService>();
+        services.AddScoped<IGdprService, GdprService>();
 
         return services;
     }

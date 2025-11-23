@@ -28,6 +28,11 @@ public class RegisterRequest
 
     [Required(ErrorMessage = "Role is required")]
     public string Role { get; set; } = string.Empty;
+
+    /// <summary>
+    /// GDPR: User consent for email marketing communications.
+    /// </summary>
+    public bool EmailMarketingConsent { get; set; }
 }
 
 /// <summary>
@@ -70,6 +75,11 @@ public class ExternalLoginRequest
     public string Role { get; set; } = string.Empty;
 
     public string? ExternalProviderId { get; set; }
+
+    /// <summary>
+    /// GDPR: User consent for email marketing communications.
+    /// </summary>
+    public bool EmailMarketingConsent { get; set; }
 }
 
 /// <summary>

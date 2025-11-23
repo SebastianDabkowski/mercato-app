@@ -63,7 +63,9 @@ public class AuthService : IAuthService
             LastName = request.LastName,
             PhoneNumber = request.PhoneNumber,
             IsEmailVerified = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            EmailMarketingConsent = request.EmailMarketingConsent,
+            EmailMarketingConsentUpdatedAt = request.EmailMarketingConsent ? DateTime.UtcNow : null
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -181,7 +183,9 @@ public class AuthService : IAuthService
                 IsEmailVerified = true, // External providers verify emails
                 ExternalProvider = request.Provider,
                 ExternalProviderId = request.ExternalProviderId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                EmailMarketingConsent = request.EmailMarketingConsent,
+                EmailMarketingConsentUpdatedAt = request.EmailMarketingConsent ? DateTime.UtcNow : null
             };
 
             var result = await _userManager.CreateAsync(user);
