@@ -248,3 +248,165 @@ public record UpdateCommissionConfigRequest
     /// </summary>
     public required string ModifiedBy { get; init; }
 }
+
+// ========================
+// Admin Dashboard DTOs
+// ========================
+
+/// <summary>
+/// Admin dashboard metrics for the marketplace.
+/// </summary>
+public record AdminDashboardMetrics
+{
+    /// <summary>
+    /// GMV (Gross Merchandise Value) for today.
+    /// </summary>
+    public decimal GmvToday { get; init; }
+
+    /// <summary>
+    /// GMV (Gross Merchandise Value) for the current month.
+    /// </summary>
+    public decimal GmvThisMonth { get; init; }
+
+    /// <summary>
+    /// Number of orders placed today.
+    /// </summary>
+    public int OrdersToday { get; init; }
+
+    /// <summary>
+    /// Number of orders placed this month.
+    /// </summary>
+    public int OrdersThisMonth { get; init; }
+
+    /// <summary>
+    /// Number of active sellers (stores with Active status).
+    /// </summary>
+    public int ActiveSellers { get; init; }
+
+    /// <summary>
+    /// Number of active product listings (Published products).
+    /// </summary>
+    public int ActiveListings { get; init; }
+
+    /// <summary>
+    /// Number of new buyer registrations today.
+    /// </summary>
+    public int NewBuyersToday { get; init; }
+
+    /// <summary>
+    /// Number of new buyer registrations this month.
+    /// </summary>
+    public int NewBuyersThisMonth { get; init; }
+
+    /// <summary>
+    /// Number of new seller registrations today.
+    /// </summary>
+    public int NewSellersToday { get; init; }
+
+    /// <summary>
+    /// Number of new seller registrations this month.
+    /// </summary>
+    public int NewSellersThisMonth { get; init; }
+}
+
+// ========================
+// Seller Dashboard DTOs
+// ========================
+
+/// <summary>
+/// Request for seller dashboard metrics.
+/// </summary>
+public record SellerDashboardRequest
+{
+    /// <summary>
+    /// Store ID to get metrics for.
+    /// </summary>
+    public required Guid StoreId { get; init; }
+
+    /// <summary>
+    /// Period start date (inclusive).
+    /// </summary>
+    public required DateTime StartDate { get; init; }
+
+    /// <summary>
+    /// Period end date (inclusive).
+    /// </summary>
+    public required DateTime EndDate { get; init; }
+}
+
+/// <summary>
+/// Seller dashboard metrics for a specific period.
+/// </summary>
+public record SellerDashboardMetrics
+{
+    /// <summary>
+    /// Store ID.
+    /// </summary>
+    public required Guid StoreId { get; init; }
+
+    /// <summary>
+    /// Store name.
+    /// </summary>
+    public required string StoreName { get; init; }
+
+    /// <summary>
+    /// Period start date.
+    /// </summary>
+    public required DateTime PeriodStartDate { get; init; }
+
+    /// <summary>
+    /// Period end date.
+    /// </summary>
+    public required DateTime PeriodEndDate { get; init; }
+
+    /// <summary>
+    /// Total sales value in the period (GMV).
+    /// </summary>
+    public decimal TotalSales { get; init; }
+
+    /// <summary>
+    /// Number of orders in the period.
+    /// </summary>
+    public int OrderCount { get; init; }
+
+    /// <summary>
+    /// List of best-selling products in the period.
+    /// </summary>
+    public List<BestSellingProduct> BestSellingProducts { get; init; } = new();
+}
+
+/// <summary>
+/// Best-selling product information.
+/// </summary>
+public record BestSellingProduct
+{
+    /// <summary>
+    /// Product ID.
+    /// </summary>
+    public required Guid ProductId { get; init; }
+
+    /// <summary>
+    /// Product SKU.
+    /// </summary>
+    public required string ProductSku { get; init; }
+
+    /// <summary>
+    /// Product title.
+    /// </summary>
+    public required string ProductTitle { get; init; }
+
+    /// <summary>
+    /// Product image URL.
+    /// </summary>
+    public string? ProductImageUrl { get; init; }
+
+    /// <summary>
+    /// Total quantity sold in the period.
+    /// </summary>
+    public int QuantitySold { get; init; }
+
+    /// <summary>
+    /// Total revenue from this product in the period.
+    /// </summary>
+    public decimal TotalRevenue { get; init; }
+}
