@@ -174,7 +174,7 @@
         }
         catch (Exception ex)
         {
-            // TODO: Log error and show user-friendly message
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
             Console.WriteLine($"Error loading categories: {ex.Message}");
         }
         finally
@@ -187,8 +187,8 @@
     {
         try
         {
-            // TODO: Implement proper popularity sorting based on sales/views
-            // For now, we'll get recent products sorted by creation date descending
+            // TODO: Implement proper popularity sorting based on sales/views from analytics
+            // For now, we'll get products sorted by creation date (newest)
             var request = new ProductSearchRequest
             {
                 PageNumber = 1,
@@ -202,7 +202,7 @@
         }
         catch (Exception ex)
         {
-            // TODO: Log error and show user-friendly message
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
             Console.WriteLine($"Error loading popular products: {ex.Message}");
         }
         finally
@@ -215,9 +215,12 @@
     {
         try
         {
+            // Get different products than popular by using an offset
+            // TODO: This is a temporary solution. Implement proper "new arrivals" logic
+            // based on product creation date within last N days
             var request = new ProductSearchRequest
             {
-                PageNumber = 1,
+                PageNumber = 2, // Offset to get different products
                 PageSize = 8,
                 SortBy = "created",
                 SortDirection = "desc"
@@ -228,7 +231,7 @@
         }
         catch (Exception ex)
         {
-            // TODO: Log error and show user-friendly message
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
             Console.WriteLine($"Error loading new arrivals: {ex.Message}");
         }
         finally
@@ -246,11 +249,11 @@
                 ProductId = productId,
                 Quantity = 1
             });
-            // TODO: Show success notification
+            // TODO: Implement proper success/error notification system for user feedback
         }
         catch (Exception ex)
         {
-            // TODO: Show error notification
+            // TODO: Use ILogger for proper logging and implement user-friendly error notifications
             Console.WriteLine($"Error adding to cart: {ex.Message}");
         }
     }
@@ -273,7 +276,9 @@
 
     private string GetCategoryIcon(string categoryName)
     {
-        // TODO: This is a simple mapping. In production, store icon names with categories in the database
+        // TODO: Store icon class names in the database with category records
+        // This is a temporary solution for MVP. Icon mapping should be configurable
+        // to avoid maintenance issues when category names change.
         return categoryName.ToLower() switch
         {
             var name when name.Contains("electronic") => "bi-laptop",
