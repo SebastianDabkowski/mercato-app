@@ -149,6 +149,10 @@ public class PublicApiController : ControllerBase
         // Get unique store IDs
         var storeIds = products.Select(p => p.StoreId).Distinct().ToList();
 
+        // TODO: Optimize N+1 query pattern by implementing batch method
+        // Consider adding IStoreService.GetStoresByIdsAsync(List<Guid> storeIds)
+        // to fetch all stores in a single database query
+
         // Fetch store information for all unique stores
         var storeDict = new Dictionary<Guid, string>();
         foreach (var storeId in storeIds)

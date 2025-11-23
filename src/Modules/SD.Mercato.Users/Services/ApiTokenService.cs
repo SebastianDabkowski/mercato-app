@@ -161,6 +161,9 @@ public class ApiTokenService : IApiTokenService
         var token = await _context.ApiTokens.FindAsync(tokenId);
         if (token != null)
         {
+            // TODO: Optimize token usage tracking for high load scenarios
+            // Consider implementing a background service or batching strategy
+            // to update LastUsedAt less frequently (e.g., once per hour per token)
             token.LastUsedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
@@ -168,13 +171,18 @@ public class ApiTokenService : IApiTokenService
 
     /// <summary>
     /// Generate a cryptographically secure random token (64 characters).
+    /// Uses URL-safe Base64 encoding for better compatibility.
     /// </summary>
     private static string GenerateSecureToken()
     {
-        var bytes = new byte[32]; // 32 bytes = 256 bits
+        var bytes = new byte[48]; // 48 bytes = 384 bits, gives us 64 base64 chars
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(bytes);
-        return Convert.ToBase64String(bytes).Replace("+", "").Replace("/", "").Replace("=", "")[..64];
+        // Use URL-safe Base64 encoding
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .Replace("=", "");
     }
 
     /// <summary>
@@ -189,17 +197,23 @@ public class ApiTokenService : IApiTokenService
     }
 
     /// <summary>
+    /// Parse permissions from comma-separated string.
+    /// </summary>
+    private static List<string> ParsePermissions(string permissions)
+    {
+        return permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+    }
+
+    /// <summary>
     /// Map ApiToken entity to DTO.
     /// </summary>
     private static ApiTokenDto MapToDto(ApiToken token)
     {
-        var permissions = token.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-
         return new ApiTokenDto
         {
             Id = token.Id,
             Name = token.Name,
-            Permissions = permissions,
+            Permissions = ParsePermissions(token.Permissions),
             StoreId = token.StoreId,
             CreatedAt = token.CreatedAt,
             ExpiresAt = token.ExpiresAt,

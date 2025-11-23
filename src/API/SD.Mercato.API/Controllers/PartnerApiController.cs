@@ -322,17 +322,6 @@ public class PartnerApiController : ControllerBase
     }
 
     /// <summary>
-    /// Request DTO for updating stock.
-    /// </summary>
-    public class UpdateStockRequest
-    {
-        /// <summary>
-        /// New stock quantity.
-        /// </summary>
-        public int StockQuantity { get; set; }
-    }
-
-    /// <summary>
     /// Check if the user has a specific permission.
     /// </summary>
     private bool HasPermission(string permission)
