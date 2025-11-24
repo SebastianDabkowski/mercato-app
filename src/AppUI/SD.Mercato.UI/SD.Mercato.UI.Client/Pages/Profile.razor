@@ -47,7 +47,7 @@
 
                         @if (isEditing)
                         {
-                            <EditForm Model="@updateRequest" OnValidSubmit="@HandleUpdateProfile">
+                            <EditForm Model="@updateRequest" OnValidSubmit="@HandleUpdateProfile" FormName="ProfileUpdateForm">
                                 <DataAnnotationsValidator />
                                 <ValidationSummary class="text-danger" />
 

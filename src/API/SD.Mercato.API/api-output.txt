@@ -1,0 +1,7 @@
+Using launch settings from C:\RepoSD\mercato\src\API\SD.Mercato.API\Properties\launchSettings.json...
+Building...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (102ms) [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Description], [a].[Name], [a].[NormalizedName]
+      FROM [users].[AspNetRoles] AS [a]
+      WHERE [a].[NormalizedName] = @__normalizedName_0

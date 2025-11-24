@@ -36,7 +36,7 @@
                 <h5 class="card-title mb-0">Create Category</h5>
             </div>
             <div class="card-body">
-                <EditForm Model="@createModel" OnValidSubmit="HandleCreateCategory">
+                <EditForm Model="@createModel" OnValidSubmit="HandleCreateCategory" FormName="CategoryCreateForm">
                     <DataAnnotationsValidator />
 
                     <div class="mb-3">

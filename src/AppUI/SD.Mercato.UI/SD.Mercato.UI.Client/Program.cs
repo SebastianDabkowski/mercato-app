@@ -8,6 +8,9 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 // Add Blazored LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 
+// Add logging services
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
 // Configure HttpClient for API calls
 builder.Services.AddScoped(sp => new HttpClient 
 { 
@@ -19,8 +22,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Add authorization services
 builder.Services.AddAuthorizationCore();
-builder.Services.AddScoped<CustomAuthenticationStateProvider>();
-builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthenticationStateProvider>());
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IStoreService, StoreService>();
@@ -30,6 +31,8 @@ builder.Services.AddScoped<ISellerOrderService, SellerOrderService>();
 builder.Services.AddScoped<ISellerReportService, SellerReportService>();
 builder.Services.AddScoped<ICaseService, CaseService>();
 builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthenticationStateProvider>());
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 
 // Add Admin services
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
